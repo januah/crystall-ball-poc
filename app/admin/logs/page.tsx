@@ -7,28 +7,52 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Toast, useToast } from '@/components/ui/toast';
-import { Activity, CheckCircle2, AlertTriangle, XCircle, Play, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, XCircle, Play, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
-type LogStatus = 'success' | 'partial' | 'failed';
+type LogStatus = 'success' | 'partial' | 'failed' | 'running';
+
+interface StepLog {
+  ts: string;
+  level: 'info' | 'warn' | 'error';
+  step: string;
+  message: string;
+}
 
 interface CronLog {
   id: string;
   run_date: string;
   started_at: string;
   completed_at: string | null;
+  // derived client-side: null completed_at means still running
+
   status: LogStatus;
   opportunities_found: number;
   opportunities_saved: number;
   whatsapp_alerts_sent: number;
   retry_count: number;
   error_message: string | null;
+  step_failed: string | null;
+  step_logs: StepLog[] | null;
   duration_seconds: number | null;
 }
 
-const STATUS_CONFIG: Record<LogStatus, { label: string; variant: 'success' | 'warning' | 'danger'; icon: React.FC<any> }> = {
+const STATUS_CONFIG: Record<LogStatus, { label: string; variant: 'success' | 'warning' | 'danger' | 'default'; icon: React.FC<any> }> = {
   success: { label: 'Success', variant: 'success', icon: CheckCircle2 },
   partial: { label: 'Partial', variant: 'warning', icon: AlertTriangle },
   failed:  { label: 'Failed',  variant: 'danger',  icon: XCircle },
+  running: { label: 'Running', variant: 'default', icon: Loader2 },
+};
+
+const LEVEL_STYLES: Record<StepLog['level'], string> = {
+  info:  'text-foreground',
+  warn:  'text-amber-600',
+  error: 'text-destructive font-medium',
+};
+
+const LEVEL_BADGE: Record<StepLog['level'], string> = {
+  info:  'bg-muted text-muted-foreground',
+  warn:  'bg-accent/20 text-amber-700',
+  error: 'bg-destructive/10 text-destructive',
 };
 
 function fmtDuration(seconds: number | null): string {
@@ -42,12 +66,20 @@ function fmtTime(iso: string | null): string {
   return new Date(iso).toLocaleString('en-MY');
 }
 
+function fmtLogTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('en-MY', { hour12: false });
+}
+
+function hasDetails(log: CronLog): boolean {
+  return log.status !== 'success';
+}
+
 export default function CronLogsPage() {
   const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const { data: logs = [], isLoading } = useQuery<CronLog[]>({
+  const { data: rawLogs = [], isLoading } = useQuery<CronLog[]>({
     queryKey: ['cron-logs'],
     queryFn: async () => {
       const res = await fetch('/api/admin/logs');
@@ -55,8 +87,15 @@ export default function CronLogsPage() {
       const { data } = await res.json();
       return data ?? [];
     },
-    refetchInterval: 30_000,
+    refetchInterval: 10_000,
   });
+
+  // Derive running status client-side: status=failed + no completed_at = still in progress
+  const logs = rawLogs.map((l) =>
+    l.status === 'failed' && !l.completed_at ? { ...l, status: 'running' as LogStatus } : l
+  );
+
+  const hasActiveRun = logs.some((l) => l.status === 'running');
 
   const triggerMutation = useMutation({
     mutationFn: async () => {
@@ -80,24 +119,29 @@ export default function CronLogsPage() {
   const totalSaved = logs.reduce((s, l) => s + (l.opportunities_saved ?? 0), 0);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       {toast && <Toast message={toast} onClose={hideToast} />}
       <Sidebar />
       <main className="flex-1 ml-[240px]">
         {/* Header */}
-        <div className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50/80 backdrop-blur-md px-8 py-4">
+        <div className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold text-slate-900">Cron Job Logs</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Daily pipeline runs · auto-refreshes every 30s</p>
+              <h1 className="text-lg font-bold text-foreground">Cron Job Logs</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Daily pipeline runs · auto-refreshes every 30s</p>
             </div>
             <Button
               size="sm"
               onClick={() => triggerMutation.mutate()}
-              disabled={triggerMutation.isPending}
+              disabled={triggerMutation.isPending || hasActiveRun}
+              title={hasActiveRun ? 'A run is already in progress' : undefined}
             >
-              <Play className="h-4 w-4" />
-              {triggerMutation.isPending ? 'Triggering…' : 'Run Now'}
+              {hasActiveRun
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
+                : triggerMutation.isPending
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Triggering…</>
+                  : <><Play className="h-4 w-4" /> Run Now</>
+              }
             </Button>
           </div>
         </div>
@@ -106,19 +150,19 @@ export default function CronLogsPage() {
           {/* Stats */}
           <div className="grid grid-cols-4 gap-4">
             {[
-              { label: 'Total Runs',         value: logs.length,   icon: Activity,      color: 'text-violet-400'  },
-              { label: 'Successful',          value: successCount,  icon: CheckCircle2,  color: 'text-emerald-400' },
-              { label: 'Partial / Failed',    value: `${partialCount} / ${failedCount}`, icon: AlertTriangle, color: 'text-amber-400' },
-              { label: 'Opportunities Saved', value: totalSaved,    icon: Activity,      color: 'text-blue-400'   },
+              { label: 'Total Runs',         value: logs.length,   icon: Activity,      color: 'text-primary'     },
+              { label: 'Successful',          value: successCount,  icon: CheckCircle2,  color: 'text-emerald-600' },
+              { label: 'Partial / Failed',    value: `${partialCount} / ${failedCount}`, icon: AlertTriangle, color: 'text-accent' },
+              { label: 'Opportunities Saved', value: totalSaved,    icon: Activity,      color: 'text-secondary'   },
             ].map((stat) => (
               <Card key={stat.label}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-slate-100 border border-slate-200 ${stat.color}`}>
+                  <div className={`p-2 rounded-lg bg-muted border border-border ${stat.color}`}>
                     <stat.icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">{stat.label}</p>
-                    <p className="text-lg font-bold text-slate-900">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    <p className="text-lg font-bold text-foreground">{stat.value}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -126,24 +170,23 @@ export default function CronLogsPage() {
           </div>
 
           {/* Logs Table */}
-          <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+          <div className="rounded-xl border border-border bg-card overflow-x-auto">
             {isLoading ? (
-              <div className="p-8 text-center text-slate-400 text-sm animate-pulse">Loading logs…</div>
+              <div className="p-8 text-center text-muted-foreground text-sm animate-pulse">Loading logs…</div>
             ) : logs.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-sm">No logs yet. The pipeline hasn't run.</div>
+              <div className="p-8 text-center text-muted-foreground text-sm">No logs yet. The pipeline hasn't run.</div>
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-b border-slate-200">
+                  <TableRow className="border-b border-border">
                     <TableHead>Date</TableHead>
                     <TableHead>Started At</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Found</TableHead>
                     <TableHead className="text-right">Saved</TableHead>
-                    <TableHead className="text-right">WA Alerts</TableHead>
+                    <TableHead className="text-right">WA</TableHead>
                     <TableHead className="text-right">Retries</TableHead>
-                    <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -151,41 +194,72 @@ export default function CronLogsPage() {
                     const cfg = STATUS_CONFIG[log.status] ?? STATUS_CONFIG.failed;
                     const Icon = cfg.icon;
                     const isExpanded = expandedRow === log.id;
+                    const showable = hasDetails(log);
                     return (
                       <>
-                        <TableRow key={log.id} className={isExpanded ? 'bg-slate-50' : undefined}>
-                          <TableCell className="font-medium text-slate-800">{log.run_date}</TableCell>
-                          <TableCell className="text-slate-500 text-xs">{fmtTime(log.started_at)}</TableCell>
-                          <TableCell className="text-slate-500 text-xs">{fmtDuration(log.duration_seconds)}</TableCell>
+                        <TableRow
+                          key={log.id}
+                          className={`${isExpanded ? 'bg-muted/40' : ''} ${showable ? 'cursor-pointer hover:bg-muted/20' : ''}`}
+                          onClick={() => showable && setExpandedRow(isExpanded ? null : log.id)}
+                        >
+                          <TableCell className="font-medium text-foreground">{log.run_date}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">{fmtTime(log.started_at)}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">{fmtDuration(log.duration_seconds)}</TableCell>
                           <TableCell>
                             <Badge variant={cfg.variant} className="flex items-center gap-1 w-fit">
-                              <Icon className="h-3 w-3" />
+                              <Icon className={`h-3 w-3 ${log.status === 'running' ? 'animate-spin' : ''}`} />
                               {cfg.label}
+                              {showable && (isExpanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />)}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right text-slate-600">{log.opportunities_found ?? 0}</TableCell>
-                          <TableCell className="text-right text-slate-600">{log.opportunities_saved ?? 0}</TableCell>
-                          <TableCell className="text-right text-slate-600">{log.whatsapp_alerts_sent ?? 0}</TableCell>
-                          <TableCell className="text-right text-slate-600">{log.retry_count ?? 0}</TableCell>
-                          <TableCell className="text-right">
-                            {log.error_message && (
-                              <button
-                                onClick={() => setExpandedRow(isExpanded ? null : log.id)}
-                                className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 ml-auto"
-                              >
-                                {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                                {isExpanded ? 'Hide' : 'Error'}
-                              </button>
-                            )}
-                          </TableCell>
+                          <TableCell className="text-right text-foreground">{log.opportunities_found ?? 0}</TableCell>
+                          <TableCell className="text-right text-foreground">{log.opportunities_saved ?? 0}</TableCell>
+                          <TableCell className="text-right text-foreground">{log.whatsapp_alerts_sent ?? 0}</TableCell>
+                          <TableCell className="text-right text-foreground">{log.retry_count ?? 0}</TableCell>
                         </TableRow>
-                        {isExpanded && log.error_message && (
-                          <TableRow key={`${log.id}-error`}>
-                            <TableCell colSpan={9} className="bg-red-50 border-b border-red-100 px-6 py-3">
-                              <p className="text-xs font-medium text-red-600 mb-1">Error Details</p>
-                              <pre className="text-xs text-red-500 whitespace-pre-wrap font-mono leading-relaxed">
-                                {log.error_message}
-                              </pre>
+
+                        {isExpanded && (
+                          <TableRow key={`${log.id}-detail`}>
+                            <TableCell colSpan={8} className="bg-muted/20 border-b border-border p-0">
+                              <div className="px-6 py-4 space-y-3">
+                                {/* Error summary banner */}
+                                {log.error_message && (
+                                  <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3">
+                                    <p className="text-xs font-semibold text-destructive mb-1">
+                                      Error{log.step_failed ? ` — failed at ${log.step_failed}` : ''}
+                                    </p>
+                                    <p className="text-xs text-destructive/80 font-mono">{log.error_message}</p>
+                                  </div>
+                                )}
+
+                                {/* No details captured (pre-migration runs) */}
+                              {!log.error_message && (!log.step_logs || log.step_logs.length === 0) && (
+                                <p className="text-xs text-muted-foreground italic">
+                                  No error details captured for this run. Run the DB migration and trigger a new run to see step-by-step logs.
+                                </p>
+                              )}
+
+                              {/* Step-by-step logs */}
+                              {log.step_logs && log.step_logs.length > 0 && (
+                                  <div className="rounded-lg border border-border bg-card overflow-hidden">
+                                    <div className="px-4 py-2 border-b border-border bg-muted/40">
+                                      <p className="text-xs font-semibold text-foreground">Pipeline Log</p>
+                                    </div>
+                                    <div className="divide-y divide-border/50 font-mono text-xs max-h-72 overflow-y-auto">
+                                      {log.step_logs.map((entry, i) => (
+                                        <div key={i} className="flex items-start gap-3 px-4 py-2">
+                                          <span className="text-muted-foreground shrink-0 w-16">{fmtLogTime(entry.ts)}</span>
+                                          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${LEVEL_BADGE[entry.level]}`}>
+                                            {entry.level}
+                                          </span>
+                                          <span className="text-muted-foreground shrink-0 w-20 truncate">{entry.step}</span>
+                                          <span className={LEVEL_STYLES[entry.level]}>{entry.message}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         )}

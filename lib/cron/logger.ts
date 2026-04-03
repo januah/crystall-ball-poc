@@ -2,6 +2,13 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 
 export type CronLogStatus = 'success' | 'partial' | 'failed';
 
+export interface StepLog {
+  ts: string;
+  level: 'info' | 'warn' | 'error';
+  step: string;
+  message: string;
+}
+
 export interface CronLogPayload {
   run_date: string;
   started_at: string;
@@ -12,7 +19,35 @@ export interface CronLogPayload {
   whatsapp_alerts_sent: number;
   error_message?: string | null;
   step_failed?: string | null;
+  step_logs?: StepLog[];
   retry_count: number;
+}
+
+export class PipelineLogger {
+  private logs: StepLog[] = [];
+
+  info(step: string, message: string): void {
+    this.push('info', step, message);
+  }
+
+  warn(step: string, message: string): void {
+    this.push('warn', step, message);
+  }
+
+  error(step: string, message: string): void {
+    this.push('error', step, message);
+  }
+
+  flush(): StepLog[] {
+    return [...this.logs];
+  }
+
+  private push(level: StepLog['level'], step: string, message: string): void {
+    const entry: StepLog = { ts: new Date().toISOString(), level, step, message };
+    this.logs.push(entry);
+    const consoleFn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
+    consoleFn(`[pipeline][${step}] ${message}`);
+  }
 }
 
 export async function createCronLog(payload: CronLogPayload): Promise<string> {

@@ -46,28 +46,28 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-violet-100/50 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
       </div>
 
       <div className="w-full max-w-sm px-6 relative z-10">
         <div className="text-center mb-10">
-          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-600/20 border border-violet-600/30 mb-4">
-            <Sparkles className="h-7 w-7 text-violet-400" />
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 mb-4">
+            <Sparkles className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Crystal Ball</h1>
-          <p className="mt-1 text-sm text-slate-500">Market Intelligence Platform</p>
+          <h1 className="text-2xl font-bold text-foreground">Crystal Ball</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Market Intelligence Platform</p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 space-y-5">
+        <div className="rounded-2xl border border-border bg-card p-8 space-y-5">
           {error && (
-            <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-lg bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive">
               {error}
             </div>
           )}
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <Mail className="h-3 w-3" /> Email
             </label>
             <Input
@@ -78,7 +78,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-400 flex items-center gap-1.5">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <Lock className="h-3 w-3" /> Password
             </label>
             <Input
@@ -99,7 +99,7 @@ export default function LoginPage() {
           </Button>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">AMAST Sdn Bhd · Internal Use Only</p>
+        <p className="text-center text-xs text-muted-foreground mt-6">AMAST Sdn Bhd · Internal Use Only</p>
       </div>
     </div>
   );

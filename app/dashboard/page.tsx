@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { FilterBar } from '@/components/dashboard/FilterBar';
@@ -11,6 +11,9 @@ import { formatInTimeZone } from 'date-fns-tz';
 
 const MYT = 'Asia/Kuala_Lumpur';
 const todayMYT = () => formatInTimeZone(new Date(), MYT, 'yyyy-MM-dd');
+
+// Sentinel — replaced once availableDates loads
+const PENDING = '__pending__';
 
 type BadgeFilter = 'All' | 'AMAST Aligned' | 'No SEA Competitor';
 
@@ -31,15 +34,15 @@ async function fetchOpportunities(params: URLSearchParams) {
 
 function CardSkeleton() {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 animate-pulse space-y-3">
+    <div className="rounded-xl border border-border bg-card p-5 animate-pulse space-y-3">
       <div className="flex gap-4">
-        <div className="h-10 w-10 rounded-full bg-slate-200 shrink-0" />
+        <div className="h-10 w-10 rounded-full bg-muted shrink-0" />
         <div className="flex-1 space-y-2">
-          <div className="h-4 bg-slate-200 rounded w-3/4" />
-          <div className="h-3 bg-slate-100 rounded w-full" />
+          <div className="h-4 bg-muted rounded w-3/4" />
+          <div className="h-3 bg-muted/60 rounded w-full" />
           <div className="flex gap-2 mt-2">
-            <div className="h-5 w-20 bg-slate-100 rounded-full" />
-            <div className="h-5 w-20 bg-slate-100 rounded-full" />
+            <div className="h-5 w-20 bg-muted/60 rounded-full" />
+            <div className="h-5 w-20 bg-muted/60 rounded-full" />
           </div>
         </div>
       </div>
@@ -48,7 +51,7 @@ function CardSkeleton() {
 }
 
 export default function DashboardPage() {
-  const [selectedDate, setSelectedDate] = useState(todayMYT());
+  const [selectedDate, setSelectedDate] = useState(PENDING);
   const [selectedCategory, setSelectedCategory] = useState<'All' | Category>('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | CurationStatus>('All');
   const [selectedBadge, setSelectedBadge] = useState<BadgeFilter>('All');
@@ -58,14 +61,23 @@ export default function DashboardPage() {
     queryFn: fetchDates,
   });
 
+  // Auto-select most recent date once dates load; fall back to today MYT
+  useEffect(() => {
+    if (selectedDate === PENDING) {
+      setSelectedDate(availableDates[0] ?? todayMYT());
+    }
+  }, [availableDates, selectedDate]);
+
+  const resolvedDate = selectedDate === PENDING ? (availableDates[0] ?? todayMYT()) : selectedDate;
+
   const params = useMemo(() => {
-    const p = new URLSearchParams({ date: selectedDate });
+    const p = new URLSearchParams({ date: resolvedDate });
     if (selectedCategory !== 'All') p.set('category', selectedCategory);
     if (selectedStatus !== 'All') p.set('status', selectedStatus);
     if (selectedBadge === 'AMAST Aligned') p.set('amast_aligned', 'true');
     if (selectedBadge === 'No SEA Competitor') p.set('no_sea_competitor', 'true');
     return p;
-  }, [selectedDate, selectedCategory, selectedStatus, selectedBadge]);
+  }, [resolvedDate, selectedCategory, selectedStatus, selectedBadge]);
 
   const {
     data: opportunities = [],
@@ -74,6 +86,7 @@ export default function DashboardPage() {
   } = useQuery({
     queryKey: ['opportunities', params.toString()],
     queryFn: () => fetchOpportunities(params),
+    enabled: selectedDate !== PENDING,
   });
 
   const amastCount = opportunities.filter((o: any) => o.amastAligned).length;
@@ -83,19 +96,19 @@ export default function DashboardPage() {
       ? Math.round(opportunities.reduce((s: number, o: any) => s + (o.score ?? 0), 0) / opportunities.length)
       : 0;
 
-  const allDates = availableDates.length > 0 ? availableDates : [selectedDate];
+  const allDates = availableDates.length > 0 ? availableDates : [resolvedDate];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-background">
       <Sidebar />
       <main className="flex-1 ml-[240px] min-h-screen">
         {/* Header */}
-        <div className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50/80 backdrop-blur-md px-8 py-4">
+        <div className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold text-slate-900">Opportunity Feed</h1>
-              <p className="text-xs text-slate-400 mt-0.5">
-                AI-curated market intelligence · {selectedDate}
+              <h1 className="text-lg font-bold text-foreground">Opportunity Feed</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                AI-curated market intelligence · {resolvedDate}
               </p>
             </div>
           </div>
@@ -105,19 +118,19 @@ export default function DashboardPage() {
           {/* Stats */}
           <div className="grid grid-cols-4 gap-4">
             {[
-              { label: 'Opportunities', value: opportunities.length, icon: Zap, color: 'text-violet-400' },
-              { label: 'AMAST Aligned', value: amastCount, icon: Target, color: 'text-emerald-400' },
-              { label: 'No SEA Competitor', value: noCompetitorCount, icon: Globe, color: 'text-blue-400' },
-              { label: 'Avg Score', value: opportunities.length > 0 ? `${avgScore}/100` : '—', icon: BarChart3, color: 'text-amber-400' },
+              { label: 'Opportunities', value: opportunities.length, icon: Zap, color: 'text-primary' },
+              { label: 'AMAST Aligned', value: amastCount, icon: Target, color: 'text-emerald-600' },
+              { label: 'No SEA Competitor', value: noCompetitorCount, icon: Globe, color: 'text-secondary' },
+              { label: 'Avg Score', value: opportunities.length > 0 ? `${avgScore}/100` : '—', icon: BarChart3, color: 'text-accent' },
             ].map((stat) => (
               <Card key={stat.label}>
                 <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-slate-100 border border-slate-200 ${stat.color}`}>
+                  <div className={`p-2 rounded-lg bg-muted border border-border ${stat.color}`}>
                     <stat.icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">{stat.label}</p>
-                    <p className="text-lg font-bold text-slate-900">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.label}</p>
+                    <p className="text-lg font-bold text-foreground">{stat.value}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -132,7 +145,7 @@ export default function DashboardPage() {
             onStatusChange={setSelectedStatus}
             selectedBadge={selectedBadge}
             onBadgeChange={setSelectedBadge}
-            selectedDate={selectedDate}
+            selectedDate={resolvedDate}
             onDateChange={setSelectedDate}
             availableDates={allDates}
           />
@@ -146,12 +159,12 @@ export default function DashboardPage() {
               Failed to load opportunities. Please try again.
             </div>
           ) : opportunities.length === 0 ? (
-            <div className="py-16 text-center text-slate-400 text-sm">
+            <div className="py-16 text-center text-muted-foreground text-sm">
               No opportunities found for this date. The cron job may not have run yet.
             </div>
           ) : (
             <>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 Showing {opportunities.length} opportunit{opportunities.length === 1 ? 'y' : 'ies'}
               </p>
               <div className="space-y-3">

@@ -19,13 +19,15 @@ import { sendWhatsAppAlert } from './whatsapp';
 import { callAI } from './ai';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { upsertOpportunity } from '@/lib/supabase/opportunities';
+import { PipelineLogger } from './logger';
 
 const BATCH_SIZE = 5;
 
 async function processBatch<T, R>(
   items: T[],
   fn: (item: T) => Promise<R | null>,
-  label: string
+  label: string,
+  logger: PipelineLogger
 ): Promise<R[]> {
   const results: R[] = [];
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
@@ -35,7 +37,8 @@ async function processBatch<T, R>(
       if (r.status === 'fulfilled' && r.value !== null) {
         results.push(r.value as R);
       } else if (r.status === 'rejected') {
-        console.warn(`[${label}] Item ${i + j} failed:`, r.reason);
+        const msg = r.reason instanceof Error ? r.reason.message : String(r.reason);
+        logger.warn(label, `Item ${i + j} failed: ${msg}`);
       }
     });
   }
@@ -223,7 +226,7 @@ export interface PipelineResult {
   errors: string[];
 }
 
-export async function runPipeline(): Promise<PipelineResult> {
+export async function runPipeline(logger: PipelineLogger): Promise<PipelineResult> {
   const result: PipelineResult = {
     opportunities_found: 0,
     opportunities_saved: 0,
@@ -232,40 +235,45 @@ export async function runPipeline(): Promise<PipelineResult> {
   };
 
   // Step 1: Scrape
-  console.log('[pipeline] Step 1: Scraping sources');
+  logger.info('Step 1', 'Scraping sources');
   const { items: rawItems, errors: scrapeErrors } = await scrapeAll();
-  Object.entries(scrapeErrors).forEach(([src, err]) =>
-    result.errors.push(`Scrape ${src}: ${err}`)
-  );
+  Object.entries(scrapeErrors).forEach(([src, err]) => {
+    const msg = `Scrape ${src}: ${err}`;
+    result.errors.push(msg);
+    logger.warn('Step 1', msg);
+  });
+  logger.info('Step 1', `Scraped ${rawItems.length} raw items`);
 
   // Step 2: Pre-filter
-  console.log('[pipeline] Step 2: Pre-filtering');
+  logger.info('Step 2', 'Pre-filtering items');
   const filtered = preFilter(rawItems);
-  console.log(`[pipeline] ${filtered.length} items after pre-filter`);
+  logger.info('Step 2', `${filtered.length} items after pre-filter`);
 
   if (filtered.length === 0) {
-    console.warn('[pipeline] No items after pre-filter, exiting early');
+    logger.warn('Step 2', 'No items after pre-filter, exiting early');
     return result;
   }
 
   // Step 3: AI deduplication & grouping
-  console.log('[pipeline] Step 3: AI deduplication');
+  logger.info('Step 3', 'AI deduplication');
   let uniqueOpps: UniqueOpportunity[];
   try {
     uniqueOpps = await groupAndDeduplicate(filtered);
-    console.log(`[pipeline] ${uniqueOpps.length} unique opportunities after dedup`);
+    logger.info('Step 3', `${uniqueOpps.length} unique opportunities after dedup`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     result.errors.push(`Step 3 dedup: ${msg}`);
+    logger.error('Step 3', `Deduplication failed: ${msg}`);
     throw new Error(`Step 3 failed: ${msg}`);
   }
 
   result.opportunities_found = uniqueOpps.length;
 
   // Step 4: Check existing opportunities
-  console.log('[pipeline] Step 4: Checking existing opportunities');
+  logger.info('Step 4', 'Checking existing opportunities');
   const existingOpps = await fetchExistingOpportunities();
   const existingSlugSet = new Set(existingOpps.map((o) => o.slug));
+  logger.info('Step 4', `Found ${existingOpps.length} existing opportunities in DB`);
 
   // Fetch shared lookup data
   const [amastDomainsList, emergingTechCatId, emergingSaasCatId] =
@@ -276,7 +284,7 @@ export async function runPipeline(): Promise<PipelineResult> {
     ]);
 
   // Steps 5–9: Analyse each opportunity in batches of 5
-  console.log('[pipeline] Steps 5-9: Analysing opportunities');
+  logger.info('Steps 5-9', `Analysing ${uniqueOpps.length} opportunities in batches of ${BATCH_SIZE}`);
 
   type AnalysedItem = {
     opp: UniqueOpportunity;
@@ -329,11 +337,14 @@ export async function runPipeline(): Promise<PipelineResult> {
         existing_slug: match?.slug,
       };
     },
-    'step5-9-analysis'
+    'step5-9-analysis',
+    logger
   );
 
+  logger.info('Steps 5-9', `Analysis complete: ${analysed.length}/${uniqueOpps.length} succeeded`);
+
   // Step 9: Rank and keep top 10
-  console.log('[pipeline] Step 9: Ranking');
+  logger.info('Step 9', 'Ranking opportunities');
   const scored: ScoredOpportunity[] = analysed.map((a) => ({
     ...a.opp,
     velocity: a.velocity,
@@ -349,10 +360,10 @@ export async function runPipeline(): Promise<PipelineResult> {
   }));
 
   const top10 = rankAndFilter(scored);
-  console.log(`[pipeline] Top ${top10.length} opportunities selected`);
+  logger.info('Step 9', `Top ${top10.length} opportunities selected`);
 
   // Step 10: Upsert to Supabase
-  console.log('[pipeline] Step 10: Upserting to Supabase');
+  logger.info('Step 10', `Upserting ${top10.length} opportunities to Supabase`);
 
   for (const opp of top10) {
     try {
@@ -401,13 +412,15 @@ export async function runPipeline(): Promise<PipelineResult> {
       result.opportunities_saved++;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[pipeline] Failed to upsert "${opp.title}":`, msg);
+      logger.error('Step 10', `Failed to upsert "${opp.title}": ${msg}`);
       result.errors.push(`Upsert "${opp.title}": ${msg}`);
     }
   }
 
+  logger.info('Step 10', `Saved ${result.opportunities_saved}/${top10.length} opportunities`);
+
   // Step 11: WhatsApp alerts
-  console.log('[pipeline] Step 11: Sending WhatsApp alerts');
+  logger.info('Step 11', 'Sending WhatsApp alerts');
   for (const opp of top10) {
     if (opp.velocity.is_spike_last_2_weeks && !opp.sea.sea_competitor_exists) {
       try {
@@ -423,11 +436,13 @@ export async function runPipeline(): Promise<PipelineResult> {
         result.whatsapp_alerts_sent++;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[pipeline] WhatsApp alert failed for "${opp.title}":`, msg);
+        logger.error('Step 11', `WhatsApp alert failed for "${opp.title}": ${msg}`);
         result.errors.push(`WhatsApp "${opp.title}": ${msg}`);
       }
     }
   }
+
+  logger.info('Step 11', `Sent ${result.whatsapp_alerts_sent} WhatsApp alerts`);
 
   return result;
 }

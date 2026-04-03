@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runPipeline } from '@/lib/cron/pipeline';
-import { createCronLog, updateCronLog } from '@/lib/cron/logger';
+import { createCronLog, updateCronLog, PipelineLogger } from '@/lib/cron/logger';
 import { sendFailureAlert } from '@/lib/cron/whatsapp';
 
 // Vercel Pro plan: 300s max duration
@@ -36,24 +36,29 @@ export async function GET(req: NextRequest) {
     retry_count: 0,
   });
 
+  const logger = new PipelineLogger();
   let lastError = '';
+  let stepFailed: string | null = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = RETRY_DELAYS_MS[attempt] ?? 120_000;
-      console.log(`[cron] Retry ${attempt}/${MAX_RETRIES - 1} — waiting ${delay}ms`);
+      logger.info('cron', `Retry ${attempt}/${MAX_RETRIES - 1} — waiting ${delay}ms`);
       await updateCronLog(logId, { retry_count: attempt });
       await new Promise<void>((r) => setTimeout(r, delay));
     }
 
     try {
-      const result = await runPipeline();
+      logger.info('cron', `Attempt ${attempt + 1} started`);
+      const result = await runPipeline(logger);
 
       const status: 'success' | 'partial' =
         result.errors.length > 0 &&
         result.opportunities_saved < result.opportunities_found
           ? 'partial'
           : 'success';
+
+      logger.info('cron', `Completed with status: ${status}`);
 
       await updateCronLog(logId, {
         completed_at: new Date().toISOString(),
@@ -63,6 +68,8 @@ export async function GET(req: NextRequest) {
         whatsapp_alerts_sent: result.whatsapp_alerts_sent,
         error_message:
           result.errors.length > 0 ? result.errors.join('; ') : null,
+        step_failed: null,
+        step_logs: logger.flush(),
         retry_count: attempt,
       });
 
@@ -77,15 +84,20 @@ export async function GET(req: NextRequest) {
       });
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
-      console.error(`[cron] Attempt ${attempt + 1} failed:`, lastError);
+      stepFailed = err instanceof Error && 'step' in err ? String((err as any).step) : null;
+      logger.error('cron', `Attempt ${attempt + 1} failed: ${lastError}`);
     }
   }
 
   // All retries exhausted
+  logger.error('cron', `All ${MAX_RETRIES} attempts failed. Last error: ${lastError}`);
+
   await updateCronLog(logId, {
     completed_at: new Date().toISOString(),
     status: 'failed',
     error_message: lastError,
+    step_failed: stepFailed,
+    step_logs: logger.flush(),
     retry_count: MAX_RETRIES,
   });
 

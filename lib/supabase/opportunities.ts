@@ -2,7 +2,7 @@
 // Crystal Ball — Opportunity Helpers
 // All functions run server-side only.
 // =============================================================
-import { supabaseAdmin, getAuthedClient } from './client';
+import { supabaseAdmin } from './client';
 import type {
   OpportunityInsert,
   OpportunityWithCuration,
@@ -23,9 +23,11 @@ export async function getOpportunitiesByDate(
   userId: string,
   userRole: string
 ): Promise<OpportunityWithCuration[]> {
-  const client = await getAuthedClient(userId, userRole);
-
-  const { data, error } = await client
+  // Use supabaseAdmin — auth is already validated at the API route level.
+  // The anon client + RLS via set_config(..., true) fails in Next.js because
+  // set_config is transaction-local and the subsequent SELECT runs in a new
+  // transaction, so app_current_user_id() returns null and RLS blocks all rows.
+  const { data, error } = await supabaseAdmin
     .from('opportunity_trend_history')
     .select(
       `
@@ -52,7 +54,7 @@ export async function getOpportunitiesByDate(
   // Fetch this user's curation for all these opportunities in one query
   let curationMap: Record<string, any> = {};
   if (opportunityIds.length > 0) {
-    const { data: curations, error: cErr } = await client
+    const { data: curations, error: cErr } = await supabaseAdmin
       .from('opportunity_curation')
       .select('*')
       .eq('user_id', userId)
@@ -80,9 +82,7 @@ export async function getOpportunityBySlug(
   userId: string,
   userRole: string
 ): Promise<OpportunityDetail | null> {
-  const client = await getAuthedClient(userId, userRole);
-
-  const { data: opp, error: oppErr } = await client
+  const { data: opp, error: oppErr } = await supabaseAdmin
     .from('opportunities')
     .select(
       `
@@ -104,13 +104,13 @@ export async function getOpportunityBySlug(
   if (!opp) return null;
 
   const [curationRes, noteRes] = await Promise.all([
-    client
+    supabaseAdmin
       .from('opportunity_curation')
       .select('*')
       .eq('opportunity_id', opp.id)
       .eq('user_id', userId)
       .maybeSingle(),
-    client
+    supabaseAdmin
       .from('opportunity_notes')
       .select('*')
       .eq('opportunity_id', opp.id)

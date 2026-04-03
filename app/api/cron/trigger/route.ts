@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { runPipeline } from '@/lib/cron/pipeline';
-import { createCronLog, updateCronLog } from '@/lib/cron/logger';
+import { createCronLog, updateCronLog, PipelineLogger } from '@/lib/cron/logger';
 
 export const maxDuration = 300;
 
@@ -23,7 +23,21 @@ export async function POST(req: NextRequest) {
       retry_count: 0,
     });
 
-    const result = await runPipeline();
+    const logger = new PipelineLogger();
+
+    let result;
+    try {
+      result = await runPipeline(logger);
+    } catch (pipelineErr) {
+      const message = pipelineErr instanceof Error ? pipelineErr.message : String(pipelineErr);
+      await updateCronLog(logId, {
+        completed_at: new Date().toISOString(),
+        status: 'failed',
+        error_message: message,
+        step_logs: logger.flush(),
+      });
+      throw pipelineErr;
+    }
 
     const status =
       result.errors.length > 0 && result.opportunities_saved < result.opportunities_found
@@ -37,6 +51,7 @@ export async function POST(req: NextRequest) {
       opportunities_saved: result.opportunities_saved,
       whatsapp_alerts_sent: result.whatsapp_alerts_sent,
       error_message: result.errors.length > 0 ? result.errors.join('; ') : null,
+      step_logs: logger.flush(),
     });
 
     return NextResponse.json({ success: true, status, ...result });
