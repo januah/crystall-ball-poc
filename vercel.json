@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/crystal-ball",
+      "schedule": "0 23 * * *"
+    }
+  ]
+}
