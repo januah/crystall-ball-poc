@@ -186,10 +186,10 @@ export default function CronLogsPage() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                variant={isPaused ? 'default' : 'outline'}
+                variant={isPaused ? 'default' : 'default'}
                 onClick={() => pauseMutation.mutate(!isPaused)}
                 disabled={pauseMutation.isPending}
-                className={isPaused ? '' : 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'}
+                className={isPaused ? '' : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}
               >
                 {pauseMutation.isPending
                   ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>

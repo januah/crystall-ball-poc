@@ -130,13 +130,13 @@ export default function DashboardPage() {
               { label: 'No SEA Competitor', value: noCompetitorCount, icon: Globe, accent: 'bg-teal-500', bg: 'bg-teal-50', border: 'border-teal-100', text: 'text-teal-700' },
               { label: 'Avg Score', value: opportunities.length > 0 ? `${avgScore}/100` : '—', icon: BarChart3, accent: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700' },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-3 shadow-sm">
+              <div key={stat.label} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3 shadow-sm">
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${stat.bg} ${stat.border} border`}>
                   <stat.icon className={`h-4 w-4 ${stat.text}`} />
                 </div>
                 <div>
-                  <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">{stat.label}</p>
-                  <p className="text-xl font-bold text-slate-900 tabular-nums leading-tight">{stat.value}</p>
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{stat.label}</p>
+                  <p className="text-xl font-bold text-foreground tabular-nums leading-tight">{stat.value}</p>
                 </div>
               </div>
             ))}

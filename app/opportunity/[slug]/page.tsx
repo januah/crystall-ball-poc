@@ -34,7 +34,7 @@ function Section({ icon: Icon, title, children, badge }: {
   icon: React.ElementType; title: string; children: React.ReactNode; badge?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
         <div className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-50 border border-violet-100">
           <Icon className="h-3.5 w-3.5 text-violet-600" />
@@ -168,10 +168,15 @@ export default function OpportunityDetailPage() {
       <main className="flex-1 ml-[220px]">
 
         {/* Sticky header */}
-        <div className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-md px-8 py-3">
+        <div className="sticky top-0 z-30 border-b border-border bg-card/90 backdrop-blur-md px-8 py-3">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard')} className="text-slate-500 hover:text-slate-800 gap-1.5">
+              <Button variant="ghost" size="sm" onClick={async () => {
+                // Invalidate query cache before navigating back
+                await queryClient.invalidateQueries({ queryKey: ['opportunities'] });
+                await queryClient.invalidateQueries({ queryKey: ['opportunity-dates'] });
+                window.location.assign('/dashboard');
+              }} className="text-slate-500 hover:text-slate-800 gap-1.5">
                 <ArrowLeft className="h-3.5 w-3.5" /> Back
               </Button>
               <div className="h-4 w-px bg-slate-200" />
@@ -215,9 +220,9 @@ export default function OpportunityDetailPage() {
             <div className="flex-1 min-w-0 space-y-4">
 
               {/* Title block */}
-              <div className="rounded-xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-                <h1 className="text-2xl font-bold text-slate-900 leading-tight">{opp.title}</h1>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">{opp.summary}</p>
+              <div className="rounded-xl border border-border bg-card px-6 py-5 shadow-sm">
+                <h1 className="text-2xl font-bold text-foreground leading-tight">{opp.title}</h1>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{opp.summary}</p>
                 <div className="flex flex-wrap items-center gap-2 mt-4">
                   <span className={cn(
                     'inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium',
@@ -334,7 +339,7 @@ export default function OpportunityDetailPage() {
             <div className="w-72 shrink-0 space-y-4">
 
               {/* Score card */}
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-5 text-center">
+              <div className="rounded-xl border border-border bg-card shadow-sm p-5 text-center">
                 <div className="relative inline-flex items-center justify-center mb-2">
                   <svg className="w-28 h-28 -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
@@ -353,9 +358,9 @@ export default function OpportunityDetailPage() {
               </div>
 
               {/* Score breakdown */}
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-b border-slate-100 px-4 py-3">
-                  <h3 className="text-sm font-semibold text-slate-800">Score Breakdown</h3>
+              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="border-b border-border px-4 py-3">
+                  <h3 className="text-sm font-semibold text-foreground">Score Breakdown</h3>
                 </div>
                 <div className="px-4 py-4">
                   <ScoreBreakdownReal
@@ -378,7 +383,7 @@ export default function OpportunityDetailPage() {
                   <div className="px-4 py-4 space-y-3">
                     <div className="flex flex-wrap gap-1.5">
                       {opp.amastPillars.map((p: string) => (
-                        <span key={p} className="rounded-md bg-white border border-indigo-200 px-2.5 py-0.5 text-xs font-medium text-indigo-700">
+                        <span key={p} className="rounded-md bg-card border border-border px-2.5 py-0.5 text-xs font-medium text-foreground">
                           {p}
                         </span>
                       ))}
@@ -389,11 +394,11 @@ export default function OpportunityDetailPage() {
               )}
 
               {/* Quick info */}
-              <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-b border-slate-100 px-4 py-3">
-                  <h3 className="text-sm font-semibold text-slate-800">Quick Info</h3>
+              <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+                <div className="border-b border-border px-4 py-3">
+                  <h3 className="text-sm font-semibold text-foreground">Quick Info</h3>
                 </div>
-                <div className="px-4 py-3 divide-y divide-slate-100">
+                <div className="px-4 py-3 divide-y divide-border">
                   {[
                     { label: 'Category',       value: opp.category },
                     { label: 'Classification', value: opp.hypeType },

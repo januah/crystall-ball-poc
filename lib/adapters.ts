@@ -104,24 +104,50 @@ function parseAlignmentNotes(raw: string | null | undefined): string {
 // ── Business model: parse JSON → readable text ───────────────────
 function parseBusinessModel(raw: string | null | undefined): string {
   if (!raw) return '';
+
+  // First check if the raw string is JSON
   try {
-    const p = JSON.parse(raw);
-    const lines: string[] = [];
-    if (Array.isArray(p.revenue_streams) && p.revenue_streams.length) {
-      lines.push(`Revenue streams: ${p.revenue_streams.join(', ')}.`);
+    // If raw is JSON, parse and convert to readable format
+    const parsed = JSON.parse(raw);
+
+    if (typeof parsed === 'string') {
+      // If parsed is a string, it might still contain escaped newlines
+      return parsed.replace(/\\n/g, '\n').replace(/\n\s*\n/g, '\n'); // Remove excessive blank lines
     }
-    if (p.pricing_tiers && typeof p.pricing_tiers === 'object') {
-      const tiers = Object.entries(p.pricing_tiers)
-        .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
-        .join(' · ');
-      lines.push(`Pricing — ${tiers}.`);
+
+    if (Array.isArray(parsed)) {
+      // Format array elements with appropriate spacing
+      return parsed.map(item => {
+        if (typeof item === 'string') {
+          return item.replace(/\\n/g, '\n');
+        } else if (typeof item === 'object') {
+          // Convert object properties to key-value pairs without excessive spacing
+          return Object.entries(item)
+            .map(([key, value]) => `${key}: ${typeof value === 'string' ? value.replace(/\\n/g, '\n') : value}`)
+            .join('\n');
+        }
+        return String(item);
+      }).join('\n'); // Join with single newlines instead of double
     }
-    if (p.estimated_annual_revenue) {
-      lines.push(`Estimated annual revenue: ${p.estimated_annual_revenue}.`);
+
+    if (typeof parsed === 'object') {
+      // Convert object properties to readable format with consistent spacing
+      return Object.entries(parsed)
+        .map(([key, value]) => {
+          const formattedValue = typeof value === 'string'
+            ? value.replace(/\\n/g, '\n')
+            : typeof value === 'object'
+              ? JSON.stringify(value, null, 2)
+              : String(value);
+          return `${key.replace(/^./, str => str.toUpperCase())}: ${formattedValue}`;
+        })
+        .join('\n'); // Single newline between entries instead of double
     }
-    return lines.length ? lines.join('\n') : raw;
-  } catch {
-    return raw;
+
+    return String(parsed).replace(/\\n/g, '\n');
+  } catch (e) {
+    // If not valid JSON, return as is but clean up any escaped newlines and excessive spacing
+    return raw.replace(/\\n/g, '\n').replace(/\n\s*\n/g, '\n'); // Remove excessive blank lines
   }
 }
 

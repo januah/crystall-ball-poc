@@ -59,9 +59,9 @@ function CreateUserModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 w-full max-w-md shadow-xl space-y-4">
+      <div className="bg-white rounded-2xl border border-border p-8 w-full max-w-md shadow-xl space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-slate-900">Create User</h2>
+          <h2 className="text-base font-bold text-foreground">Create User</h2>
           <button onClick={onClose}><X className="h-4 w-4 text-slate-400 hover:text-slate-600" /></button>
         </div>
         {error && <div className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</div>}
@@ -71,7 +71,7 @@ function CreateUserModal({
           { key: 'department', label: 'Department', type: 'text' },
         ].map((f) => (
           <div key={f.key} className="space-y-1">
-            <label className="text-xs text-slate-500">{f.label}{f.required && ' *'}</label>
+            <label className="text-xs text-muted-foreground">{f.label}{f.required && ' *'}</label>
             <Input
               type={f.type}
               value={(form as any)[f.key]}
@@ -84,7 +84,7 @@ function CreateUserModal({
           <select
             value={form.roleId}
             onChange={(e) => setForm((prev) => ({ ...prev, roleId: e.target.value }))}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500"
+            className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           >
             <option value="">Select role…</option>
             {roleOptions.map((r) => (
@@ -184,11 +184,11 @@ export default function UsersPage() {
 
       <Sidebar />
       <main className="flex-1 ml-[240px]">
-        <div className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50/80 backdrop-blur-md px-8 py-4">
+        <div className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold text-slate-900">User Management</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Manage team access and roles</p>
+              <h1 className="text-lg font-bold text-foreground">User Management</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Manage team access and roles</p>
             </div>
             <Button size="sm" onClick={() => setShowCreate(true)}>
               <UserPlus className="h-4 w-4" /> Invite User
@@ -205,8 +205,8 @@ export default function UsersPage() {
             ].map((s) => (
               <Card key={s.label}>
                 <CardContent className="p-4">
-                  <p className="text-xs text-slate-500">{s.label}</p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">{s.value}</p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                  <p className="text-2xl font-bold text-foreground mt-1">{s.value}</p>
                 </CardContent>
               </Card>
             ))}
@@ -220,7 +220,7 @@ export default function UsersPage() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-b border-slate-200">
+                    <TableRow className="border-b border-border">
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Department</TableHead>
@@ -238,16 +238,16 @@ export default function UsersPage() {
                             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600/20 text-violet-400 text-xs font-bold">
                               {(user.full_name ?? user.email ?? '?').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                             </div>
-                            <span className="font-medium text-slate-800">{user.full_name ?? '—'}</span>
+                            <span className="font-medium text-foreground">{user.full_name ?? '—'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-slate-500">{user.email}</TableCell>
-                        <TableCell className="text-slate-500">{user.department ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                        <TableCell className="text-muted-foreground">{user.department ?? '—'}</TableCell>
                         <TableCell>
                           <select
                             value={user.role?.id ?? ''}
                             onChange={(e) => roleMutation.mutate({ id: user.id, roleId: e.target.value })}
-                            className="appearance-none rounded-md border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-violet-500 cursor-pointer"
+                            className="appearance-none rounded-md border border-border bg-card px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
                           >
                             {roleOptions.map((r) => (
                               <option key={r.id} value={r.id}>{r.label}</option>
@@ -259,7 +259,7 @@ export default function UsersPage() {
                             {user.is_active ? 'Active' : 'Inactive'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-slate-400 text-xs">
+                        <TableCell className="text-muted-foreground text-xs">
                           {user.last_login_at
                             ? new Date(user.last_login_at).toLocaleString('en-MY')
                             : 'Never'}

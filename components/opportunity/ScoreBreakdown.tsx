@@ -28,12 +28,12 @@ export function ScoreBreakdown({ breakdown }: ScoreBreakdownProps) {
         return (
           <div key={f.key} className="space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="text-slate-600">{f.label}</span>
-              <span className="text-slate-700 font-medium">
-                {score}<span className="text-slate-400">/{f.max}</span>
+              <span className="text-foreground">{f.label}</span>
+              <span className="text-foreground font-medium">
+                {score}<span className="text-muted-foreground">/{f.max}</span>
               </span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-slate-200">
+            <div className="h-1.5 w-full rounded-full bg-border">
               <div
                 className="h-full rounded-full bg-violet-500"
                 style={{ width: `${pct}%` }}
@@ -42,10 +42,10 @@ export function ScoreBreakdown({ breakdown }: ScoreBreakdownProps) {
           </div>
         );
       })}
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-        <span className="text-sm font-semibold text-slate-700">Total Score</span>
+      <div className="pt-2 border-t border-border flex justify-between items-center">
+        <span className="text-sm font-semibold text-foreground">Total Score</span>
         <span className="text-lg font-bold text-violet-400">
-          {breakdown.total}<span className="text-slate-400 text-sm">/100</span>
+          {breakdown.total}<span className="text-muted-foreground text-sm">/100</span>
         </span>
       </div>
     </div>

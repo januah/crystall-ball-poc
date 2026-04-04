@@ -14,11 +14,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           'inline-flex items-center justify-center rounded-lg font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed',
           {
-            'bg-violet-600 text-white hover:bg-violet-500 active:bg-violet-700': variant === 'default',
-            'border border-slate-300 text-slate-600 hover:bg-slate-100 hover:text-slate-900': variant === 'outline',
-            'text-slate-500 hover:text-slate-900 hover:bg-slate-100': variant === 'ghost',
-            'bg-red-600/20 text-red-300 border border-red-600/30 hover:bg-red-600/30': variant === 'danger',
-            'bg-emerald-600/20 text-emerald-300 border border-emerald-600/30 hover:bg-emerald-600/30': variant === 'success',
+            'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/95': variant === 'default',
+            'border border-border text-foreground hover:bg-accent hover:text-accent-foreground': variant === 'outline',
+            'text-muted-foreground hover:text-foreground hover:bg-accent': variant === 'ghost',
+            'bg-destructive/20 text-destructive-foreground border border-destructive/30 hover:bg-destructive/30': variant === 'danger',
+            'bg-success/20 text-success-foreground border border-success/30 hover:bg-success/30': variant === 'success',
             'px-3 py-1.5 text-sm gap-1.5': size === 'sm',
             'px-4 py-2 text-sm gap-2': size === 'md',
             'px-6 py-3 text-base gap-2': size === 'lg',

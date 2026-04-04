@@ -26,16 +26,16 @@ export function ScoreBreakdownReal(props: ScoreBreakdownRealProps) {
         return (
           <div key={f.key} className="space-y-1">
             <div className="flex justify-between text-xs">
-              <span className="text-slate-600">
+              <span className="text-foreground">
                 {f.label}
-                <span className="text-slate-500 ml-1">× {Math.round(f.weight * 100)}%</span>
+                <span className="text-muted-foreground ml-1">× {Math.round(f.weight * 100)}%</span>
               </span>
-              <span className="text-slate-700 font-medium">
-                {raw}<span className="text-slate-500">/100</span>
-                <span className="text-slate-500 ml-1">= {contribution}</span>
+              <span className="text-foreground font-medium">
+                {raw}<span className="text-muted-foreground">/100</span>
+                <span className="text-muted-foreground ml-1">= {contribution}</span>
               </span>
             </div>
-            <div className="h-1.5 w-full rounded-full bg-slate-200">
+            <div className="h-1.5 w-full rounded-full bg-border">
               <div
                 className="h-full rounded-full bg-violet-500"
                 style={{ width: `${raw}%` }}
@@ -44,11 +44,11 @@ export function ScoreBreakdownReal(props: ScoreBreakdownRealProps) {
           </div>
         );
       })}
-      <div className="pt-2 border-t border-slate-200 flex justify-between items-center">
-        <span className="text-sm font-semibold text-slate-700">Total Score</span>
+      <div className="pt-2 border-t border-border flex justify-between items-center">
+        <span className="text-sm font-semibold text-foreground">Total Score</span>
         <span className="text-lg font-bold text-violet-400">
           {Math.round(props.scoreTotal)}
-          <span className="text-slate-500 text-sm">/100</span>
+          <span className="text-muted-foreground text-sm">/100</span>
         </span>
       </div>
     </div>

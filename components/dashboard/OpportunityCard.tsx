@@ -100,8 +100,8 @@ export function OpportunityCard({ opportunity: opp }: OpportunityCardProps) {
       {toast && <Toast message={toast} onClose={hideToast} />}
       <Link href={`/opportunity/${opp.id}`}>
         <div className={cn(
-          'group relative flex gap-5 rounded-xl border border-slate-200 bg-white p-5 pl-6',
-          'border-l-4 transition-all duration-200 hover:shadow-md hover:-translate-y-px hover:border-slate-300',
+          'group relative flex gap-5 rounded-xl border border-border bg-card p-5 pl-6',
+          'border-l-4 transition-all duration-200 hover:shadow-md hover:-translate-y-px',
           accent
         )}>
           {/* Rank badge */}
@@ -118,13 +118,13 @@ export function OpportunityCard({ opportunity: opp }: OpportunityCardProps) {
           <div className="flex-1 min-w-0">
             {/* Title row */}
             <div className="flex items-start justify-between gap-3">
-              <h3 className="text-sm font-semibold text-slate-900 leading-snug group-hover:text-violet-700 transition-colors pr-2">
+              <h3 className="text-sm font-semibold text-foreground leading-snug group-hover:text-violet-700 transition-colors pr-2">
                 {opp.title}
               </h3>
               <ChevronRight className="h-4 w-4 shrink-0 mt-0.5 text-slate-300 group-hover:text-violet-400 transition-colors" />
             </div>
 
-            <p className="mt-1 text-xs text-slate-500 line-clamp-2 leading-relaxed">{opp.summary}</p>
+            <p className="mt-1 text-xs text-muted-foreground line-clamp-2 leading-relaxed">{opp.summary}</p>
 
             {/* Badges */}
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
@@ -175,7 +175,7 @@ export function OpportunityCard({ opportunity: opp }: OpportunityCardProps) {
                   <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', STATUS_DOTS[status])} />
                   {status}
                 </button>
-                <span className="flex items-center gap-1 text-[11px] text-slate-400">
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                   <Calendar className="h-3 w-3" />
                   {opp.dateDiscovered}
                 </span>

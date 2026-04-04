@@ -34,8 +34,8 @@ function PillGroup<T extends string>({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide whitespace-nowrap">{label}</span>
-      <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">
+      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide whitespace-nowrap">{label}</span>
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-0.5">
         {options.map((opt) => (
           <button
             key={opt}
@@ -44,7 +44,7 @@ function PillGroup<T extends string>({
               'px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap',
               selected === opt
                 ? activeClass
-                : 'text-slate-500 hover:text-slate-700 hover:bg-white/70'
+                : 'text-muted-foreground hover:text-foreground hover:bg-background/70'
             )}
           >
             {opt}
@@ -57,7 +57,7 @@ function PillGroup<T extends string>({
 
 export function FilterBar(props: FilterBarProps) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+    <div className="rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {/* Category */}
         <PillGroup
@@ -68,7 +68,7 @@ export function FilterBar(props: FilterBarProps) {
           activeClass="bg-violet-600 text-white shadow-sm"
         />
 
-        <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+        <div className="h-5 w-px bg-border hidden sm:block" />
 
         {/* Status */}
         <PillGroup
@@ -78,7 +78,7 @@ export function FilterBar(props: FilterBarProps) {
           onChange={(v) => props.onStatusChange(v as 'All' | CurationStatus)}
         />
 
-        <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+        <div className="h-5 w-px bg-border hidden sm:block" />
 
         {/* Badge */}
         <PillGroup
@@ -95,7 +95,7 @@ export function FilterBar(props: FilterBarProps) {
             <select
               value={props.selectedDate}
               onChange={(e) => props.onDateChange(e.target.value)}
-              className="appearance-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 pr-7 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
+              className="appearance-none rounded-lg border border-border bg-background px-3 py-1.5 pr-7 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
             >
               {props.availableDates.map((d) => (
                 <option key={d} value={d}>{d}</option>

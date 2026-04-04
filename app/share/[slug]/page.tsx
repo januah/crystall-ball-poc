@@ -32,16 +32,16 @@ export default async function SharePage({ params }: Props) {
   const score = Math.round(opp.score_total ?? 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Public header */}
-      <div className="border-b border-slate-200 px-8 py-4 flex items-center justify-between">
+      <div className="border-b border-border px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/20 border border-violet-600/30">
             <Sparkles className="h-4 w-4 text-violet-400" />
           </div>
-          <span className="text-sm font-bold text-slate-900">Crystal Ball</span>
+          <span className="text-sm font-bold text-foreground">Crystal Ball</span>
         </div>
-        <span className="text-xs text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full">
+        <span className="text-xs text-muted-foreground bg-card border border-border px-3 py-1 rounded-full">
           Public View · Read Only
         </span>
       </div>
@@ -52,14 +52,14 @@ export default async function SharePage({ params }: Props) {
           <div className="flex items-center gap-3 mb-3">
             <span className="text-3xl font-bold text-violet-400">#{opp.rank_position}</span>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{opp.title}</h1>
-              <div className="flex items-center gap-2 mt-1 text-xs text-slate-400">
+              <h1 className="text-2xl font-bold text-foreground">{opp.title}</h1>
+              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                 <Calendar className="h-3 w-3" />
                 Discovered {opp.first_discovered_at?.slice(0, 10)}
               </div>
             </div>
           </div>
-          <p className="text-slate-600">{opp.ai_summary?.split('\n')[0]}</p>
+          <p className="text-muted-foreground">{opp.ai_summary?.split('\n')[0]}</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             <Badge variant={category === 'Emerging Tech' ? 'info' : 'default'}>{category}</Badge>
             <Badge variant={trendType === 'Traction' ? 'success' : 'warning'}>
@@ -81,19 +81,19 @@ export default async function SharePage({ params }: Props) {
           <div className="col-span-2 space-y-4">
             <Card>
               <CardHeader><CardTitle className="text-sm">AI Summary</CardTitle></CardHeader>
-              <CardContent className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{opp.ai_summary}</CardContent>
+              <CardContent className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{opp.ai_summary}</CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm">SEA Adoption Analysis</CardTitle></CardHeader>
-              <CardContent className="text-sm text-slate-400 leading-relaxed">{opp.sea_adoption_analysis}</CardContent>
+              <CardContent className="text-sm text-muted-foreground leading-relaxed">{opp.sea_adoption_analysis}</CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm">Business Model Estimate</CardTitle></CardHeader>
-              <CardContent className="text-sm text-slate-400 leading-relaxed">{opp.business_model_estimate}</CardContent>
+              <CardContent className="text-sm text-muted-foreground leading-relaxed">{opp.business_model_estimate}</CardContent>
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-sm">Market Size Estimate</CardTitle></CardHeader>
-              <CardContent className="text-sm text-slate-400 leading-relaxed">{opp.market_size_estimate}</CardContent>
+              <CardContent className="text-sm text-muted-foreground leading-relaxed">{opp.market_size_estimate}</CardContent>
             </Card>
           </div>
 
@@ -111,10 +111,10 @@ export default async function SharePage({ params }: Props) {
                   </svg>
                   <div className="absolute">
                     <div className="text-2xl font-bold text-violet-400">{score}</div>
-                    <div className="text-xs text-slate-400">/100</div>
+                    <div className="text-xs text-muted-foreground">/100</div>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500">Crystal Ball Score</p>
+                <p className="text-xs text-muted-foreground">Crystal Ball Score</p>
               </CardContent>
             </Card>
             <Card>
@@ -134,10 +134,10 @@ export default async function SharePage({ params }: Props) {
         </div>
       </div>
 
-      <footer className="border-t border-slate-200 mt-12 py-6 text-center">
-        <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+      <footer className="border-t border-border mt-12 py-6 text-center">
+        <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-violet-600" />
-          Powered by <span className="font-semibold text-slate-600">Crystal Ball</span> · AMAST Sdn Bhd · {new Date().getFullYear()}
+          Powered by <span className="font-semibold text-foreground">Crystal Ball</span> · AMAST Sdn Bhd · {new Date().getFullYear()}
         </div>
       </footer>
     </div>
