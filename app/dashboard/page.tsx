@@ -66,8 +66,8 @@ export default function DashboardPage() {
 
   // Auto-select most recent date once dates load; fall back to today MYT
   useEffect(() => {
-    if (selectedDate === PENDING) {
-      setSelectedDate(availableDates[0] ?? todayMYT());
+    if (selectedDate === PENDING && availableDates.length > 0) {
+      setSelectedDate(availableDates[0]);
     }
   }, [availableDates, selectedDate]);
 
