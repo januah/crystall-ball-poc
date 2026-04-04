@@ -135,10 +135,10 @@ function parseBusinessModel(raw: string | null | undefined): string {
           return item.replace(/\n/g, '\n').replace(/\t/g, '  ');
         } else if (typeof item === 'object') {
           // For objects in array, convert to key-value pairs
-          return Object.entries(item).map(([k, v]) => `${k}: ${formatValue(v)}`).join('\n');
+          return Object.entries(item).map(([k, v]) => `${k}: ${formatValue(v)}`).join('; ');
         }
         return String(item).replace(/\n/g, '\n').replace(/\t/g, '  ');
-      }).join('\n\n');
+      }).join('\n'); // Use single line break instead of double
     }
 
     // If it's an object, format as key-value pairs
@@ -164,7 +164,7 @@ function parseBusinessModel(raw: string | null | undefined): string {
 
       // If we handled specific fields, return those
       if (parts.length > 0) {
-        return parts.join('\n\n');
+        return parts.join('\n'); // Use single line break instead of double
       }
 
       // Otherwise, convert all properties to readable format
@@ -172,7 +172,7 @@ function parseBusinessModel(raw: string | null | undefined): string {
         .map(([key, value]) => {
           return `${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${formatValue(value)}`;
         })
-        .join('\n\n');
+        .join('\n'); // Use single line break instead of double
     }
 
     // For other primitive types, return as string
@@ -188,12 +188,12 @@ function formatValue(value: any): string {
   if (typeof value === 'string') {
     return value;
   } else if (Array.isArray(value)) {
-    return value.join(', ');
+    return value.join('; '); // Use semicolon instead of comma for better readability
   } else if (typeof value === 'object' && value !== null) {
     // For objects, format as "key: value" pairs
     return Object.entries(value)
       .map(([k, v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v}`)
-      .join(', ');
+      .join('; '); // Use semicolon instead of comma for better readability
   } else {
     return String(value);
   }
