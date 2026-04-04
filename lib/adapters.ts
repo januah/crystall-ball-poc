@@ -148,18 +148,18 @@ function parseBusinessModel(raw: string | null | undefined): string {
 
       // Check for specific known fields
       if (parsed.revenue_streams) {
-        parts.push(`**Revenue Streams:** ${(Array.isArray(parsed.revenue_streams) ? parsed.revenue_streams.join(', ') : parsed.revenue_streams)}`);
+        parts.push(`Revenue Streams: ${(Array.isArray(parsed.revenue_streams) ? parsed.revenue_streams.join(', ') : parsed.revenue_streams)}`);
       }
       if (parsed.pricing_models || parsed.pricing_tiers) {
         const pricing = parsed.pricing_models || parsed.pricing_tiers;
-        parts.push(`**Pricing:** ${(Array.isArray(pricing) ? pricing.join(', ') : typeof pricing === 'object' ? JSON.stringify(pricing) : pricing)}`);
+        parts.push(`Pricing: ${(Array.isArray(pricing) ? pricing.join(', ') : typeof pricing === 'object' ? JSON.stringify(pricing) : pricing)}`);
       }
       if (parsed.estimated_revenue || parsed.estimated_annual_revenue) {
         const rev = parsed.estimated_revenue || parsed.estimated_annual_revenue;
-        parts.push(`**Estimated Revenue:** ${rev}`);
+        parts.push(`Estimated Revenue: ${rev}`);
       }
       if (parsed.business_model_canvas) {
-        parts.push(`**Business Model Canvas:** ${typeof parsed.business_model_canvas === 'object' ? JSON.stringify(parsed.business_model_canvas, null, 2) : parsed.business_model_canvas}`);
+        parts.push(`Business Model Canvas: ${typeof parsed.business_model_canvas === 'object' ? JSON.stringify(parsed.business_model_canvas, null, 2) : parsed.business_model_canvas}`);
       }
 
       // If we handled specific fields, return those
@@ -175,7 +175,7 @@ function parseBusinessModel(raw: string | null | undefined): string {
               ? value.join(', ')
               : JSON.stringify(value, null, 2)
             : String(value);
-          return `**${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:** ${formattedValue}`;
+          return `${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${formattedValue}`;
         })
         .join('\n\n');
     }
