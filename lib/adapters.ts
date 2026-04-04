@@ -65,6 +65,58 @@ export function adaptTrendHistoryToTrendEntries(
     }));
 }
 
+// ── Break wall-of-text into paragraphs (every 2 sentences) ───────
+function paragraphify(text: string | null | undefined): string {
+  if (!text) return '';
+  if (text.includes('\n')) return text; // already has breaks
+  const sentences = text.match(/[^.!?]+[.!?]+["']?/g) ?? [text];
+  const chunks: string[] = [];
+  for (let i = 0; i < sentences.length; i += 2) {
+    chunks.push(sentences.slice(i, i + 2).join(' ').trim());
+  }
+  return chunks.join('\n\n');
+}
+
+// ── Alignment notes: parse JSON → readable text ──────────────────
+function parseAlignmentNotes(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    const p = JSON.parse(raw);
+    if (typeof p === 'object' && !Array.isArray(p)) {
+      return Object.entries(p)
+        .map(([k, v]) => `${k}: ${v}`)
+        .join('\n');
+    }
+    return raw;
+  } catch {
+    return raw;
+  }
+}
+
+// ── Business model: parse JSON → readable text ───────────────────
+function parseBusinessModel(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    const p = JSON.parse(raw);
+    const lines: string[] = [];
+    if (Array.isArray(p.revenue_streams) && p.revenue_streams.length) {
+      lines.push(`Revenue streams: ${p.revenue_streams.join(', ')}.`);
+    }
+    if (p.pricing_tiers && typeof p.pricing_tiers === 'object') {
+      const tiers = Object.entries(p.pricing_tiers)
+        .map(([k, v]) => `${k.charAt(0).toUpperCase() + k.slice(1)}: ${v}`)
+        .join(' · ');
+      lines.push(`Pricing — ${tiers}.`);
+    }
+    if (p.estimated_annual_revenue) {
+      lines.push(`Estimated annual revenue: ${p.estimated_annual_revenue}.`);
+    }
+    return lines.length ? lines.join('\n') : raw;
+  } catch {
+    return raw;
+  }
+}
+
 // ── Full DB opportunity → UI Opportunity ─────────────────────────
 export function adaptOpportunity(
   row: OpportunityRow & {
@@ -95,16 +147,16 @@ export function adaptOpportunity(
     rank: row.rank_position ?? 0,
     title: row.title,
     summary: row.ai_summary?.split('\n')[0]?.slice(0, 200) ?? '',
-    fullSummary: row.ai_summary ?? '',
+    fullSummary: paragraphify(row.ai_summary),
     category: (row.category?.name ?? 'Emerging SaaS') as Opportunity['category'],
     hypeType: row.trend_type === 'traction' ? 'Traction' : 'Hype',
-    hypeExplanation: row.hype_traction_explanation ?? '',
+    hypeExplanation: paragraphify(row.hype_traction_explanation),
     seaStatus:
       row.sea_competitor_exists ? 'Competitor Exists' : 'No SEA Competitor',
-    seaAnalysis: row.sea_adoption_analysis ?? row.sea_competitor_notes ?? '',
+    seaAnalysis: paragraphify(row.sea_adoption_analysis ?? row.sea_competitor_notes),
     amastAligned: alignments.length > 0,
     amastPillars,
-    amastDetails: alignments[0]?.alignment_notes ?? '',
+    amastDetails: parseAlignmentNotes(alignments[0]?.alignment_notes),
     score: Math.round(total),
     scoreBreakdown: {
       marketSize: Math.round(sm * 0.2),
@@ -121,7 +173,7 @@ export function adaptOpportunity(
       'yyyy-MM-dd'
     ),
     curationStatus: dbCurationToUI(row.curation?.status),
-    businessModel: row.business_model_estimate ?? '',
+    businessModel: parseBusinessModel(row.business_model_estimate),
     velocityData: adaptTrendHistoryToVelocityData(history),
     trendHistory: adaptTrendHistoryToTrendEntries(history),
     notes: row.latest_note?.note_text ?? '',
