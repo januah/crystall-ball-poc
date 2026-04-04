@@ -105,49 +105,86 @@ function parseAlignmentNotes(raw: string | null | undefined): string {
 function parseBusinessModel(raw: string | null | undefined): string {
   if (!raw) return '';
 
-  // First check if the raw string is JSON
-  try {
-    // If raw is JSON, parse and convert to readable format
-    const parsed = JSON.parse(raw);
+  // Clean up common formatting issues before processing
+  let cleanedRaw = raw.trim();
 
+  // Check if the string starts and ends with quotes (double encoded JSON string)
+  if (cleanedRaw.startsWith('"') && cleanedRaw.endsWith('"')) {
+    try {
+      // This might be a JSON-encoded string - decode it first
+      cleanedRaw = JSON.parse(cleanedRaw);
+    } catch {
+      // If parsing fails, keep the original cleaned value
+      cleanedRaw = cleanedRaw.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+  }
+
+  // Try to parse as JSON
+  try {
+    const parsed = JSON.parse(cleanedRaw);
+
+    // If it's a simple string after parsing, return it directly
     if (typeof parsed === 'string') {
-      // If parsed is a string, it might still contain escaped newlines
-      return parsed.replace(/\\n/g, '\n').replace(/\n\s*\n/g, '\n'); // Remove excessive blank lines
+      return parsed;
     }
 
+    // If it's an array, join the elements
     if (Array.isArray(parsed)) {
-      // Format array elements with appropriate spacing
       return parsed.map(item => {
         if (typeof item === 'string') {
-          return item.replace(/\\n/g, '\n');
+          return item;
         } else if (typeof item === 'object') {
-          // Convert object properties to key-value pairs without excessive spacing
-          return Object.entries(item)
-            .map(([key, value]) => `${key}: ${typeof value === 'string' ? value.replace(/\\n/g, '\n') : value}`)
-            .join('\n');
+          // For objects in array, convert to key-value pairs
+          return Object.entries(item).map(([k, v]) => `${k}: ${v}`).join('\n');
         }
         return String(item);
-      }).join('\n'); // Join with single newlines instead of double
+      }).join('\n\n');
     }
 
-    if (typeof parsed === 'object') {
-      // Convert object properties to readable format with consistent spacing
+    // If it's an object, format as key-value pairs
+    if (typeof parsed === 'object' && parsed !== null) {
+      // Handle common business model fields specifically
+      const parts = [];
+
+      // Check for specific known fields
+      if (parsed.revenue_streams) {
+        parts.push(`**Revenue Streams:** ${(Array.isArray(parsed.revenue_streams) ? parsed.revenue_streams.join(', ') : parsed.revenue_streams)}`);
+      }
+      if (parsed.pricing_models || parsed.pricing_tiers) {
+        const pricing = parsed.pricing_models || parsed.pricing_tiers;
+        parts.push(`**Pricing:** ${(Array.isArray(pricing) ? pricing.join(', ') : typeof pricing === 'object' ? JSON.stringify(pricing) : pricing)}`);
+      }
+      if (parsed.estimated_revenue || parsed.estimated_annual_revenue) {
+        const rev = parsed.estimated_revenue || parsed.estimated_annual_revenue;
+        parts.push(`**Estimated Revenue:** ${rev}`);
+      }
+      if (parsed.business_model_canvas) {
+        parts.push(`**Business Model Canvas:** ${typeof parsed.business_model_canvas === 'object' ? JSON.stringify(parsed.business_model_canvas, null, 2) : parsed.business_model_canvas}`);
+      }
+
+      // If we handled specific fields, return those
+      if (parts.length > 0) {
+        return parts.join('\n\n');
+      }
+
+      // Otherwise, convert all properties to readable format
       return Object.entries(parsed)
         .map(([key, value]) => {
-          const formattedValue = typeof value === 'string'
-            ? value.replace(/\\n/g, '\n')
-            : typeof value === 'object'
-              ? JSON.stringify(value, null, 2)
-              : String(value);
-          return `${key.replace(/^./, str => str.toUpperCase())}: ${formattedValue}`;
+          const formattedValue = typeof value === 'object' && value !== null
+            ? Array.isArray(value)
+              ? value.join(', ')
+              : JSON.stringify(value, null, 2)
+            : String(value);
+          return `**${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:** ${formattedValue}`;
         })
-        .join('\n'); // Single newline between entries instead of double
+        .join('\n\n');
     }
 
-    return String(parsed).replace(/\\n/g, '\n');
+    // For other primitive types, return as string
+    return String(parsed);
   } catch (e) {
-    // If not valid JSON, return as is but clean up any escaped newlines and excessive spacing
-    return raw.replace(/\\n/g, '\n').replace(/\n\s*\n/g, '\n'); // Remove excessive blank lines
+    // If not valid JSON, return the cleaned raw string
+    return cleanedRaw;
   }
 }
 
