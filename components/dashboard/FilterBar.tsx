@@ -1,6 +1,7 @@
 'use client';
 import { Category, CurationStatus } from '@/types';
 import { cn } from '@/lib/utils';
+import { CalendarDays } from 'lucide-react';
 
 interface FilterBarProps {
   selectedCategory: 'All' | Category;
@@ -15,87 +16,92 @@ interface FilterBarProps {
 }
 
 const CATEGORY_TABS = ['All', 'Emerging Tech', 'Emerging SaaS'] as const;
-const STATUS_FILTERS = ['All', 'Interested', 'Rejected', 'Follow Up'] as const;
+const STATUS_FILTERS = ['All', 'Interested', 'Follow Up', 'Rejected'] as const;
 const BADGE_FILTERS = ['All', 'AMAST Aligned', 'No SEA Competitor'] as const;
+
+function PillGroup<T extends string>({
+  label,
+  options,
+  selected,
+  onChange,
+  activeClass = 'bg-slate-800 text-white',
+}: {
+  label: string;
+  options: readonly T[];
+  selected: T;
+  onChange: (v: T) => void;
+  activeClass?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wide whitespace-nowrap">{label}</span>
+      <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-0.5">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => onChange(opt)}
+            className={cn(
+              'px-3 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap',
+              selected === opt
+                ? activeClass
+                : 'text-slate-500 hover:text-slate-700 hover:bg-white/70'
+            )}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function FilterBar(props: FilterBarProps) {
   return (
-    <div className="space-y-3">
-      {/* Date + Category tabs row */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Category tabs */}
-        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          {CATEGORY_TABS.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => props.onCategoryChange(cat as 'All' | Category)}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                props.selectedCategory === cat
-                  ? 'bg-violet-600 text-white'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-        {/* Date picker */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400">Date:</span>
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        {/* Category */}
+        <PillGroup
+          label="Type"
+          options={CATEGORY_TABS}
+          selected={props.selectedCategory}
+          onChange={(v) => props.onCategoryChange(v as 'All' | Category)}
+          activeClass="bg-violet-600 text-white shadow-sm"
+        />
+
+        <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+        {/* Status */}
+        <PillGroup
+          label="Status"
+          options={STATUS_FILTERS}
+          selected={props.selectedStatus}
+          onChange={(v) => props.onStatusChange(v as 'All' | CurationStatus)}
+        />
+
+        <div className="h-5 w-px bg-slate-200 hidden sm:block" />
+
+        {/* Badge */}
+        <PillGroup
+          label="Badge"
+          options={BADGE_FILTERS}
+          selected={props.selectedBadge}
+          onChange={(v) => props.onBadgeChange(v as 'All' | 'AMAST Aligned' | 'No SEA Competitor')}
+        />
+
+        {/* Date — pushed to right */}
+        <div className="ml-auto flex items-center gap-2">
+          <CalendarDays className="h-3.5 w-3.5 text-slate-400" />
           <div className="relative">
             <select
               value={props.selectedDate}
               onChange={(e) => props.onDateChange(e.target.value)}
-              className="appearance-none rounded-lg border border-slate-200 bg-white px-3 py-1.5 pr-8 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
+              className="appearance-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 pr-7 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-500 cursor-pointer"
             >
               {props.availableDates.map((d) => (
                 <option key={d} value={d}>{d}</option>
               ))}
             </select>
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs">▾</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Status + Badge filter row */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Status:</span>
-          <div className="flex items-center gap-1">
-            {STATUS_FILTERS.map((s) => (
-              <button
-                key={s}
-                onClick={() => props.onStatusChange(s as 'All' | CurationStatus)}
-                className={cn(
-                  'px-2.5 py-1 rounded-md text-xs transition-all',
-                  props.selectedStatus === s
-                    ? 'bg-slate-200 text-slate-800'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-500">Badge:</span>
-          <div className="flex items-center gap-1">
-            {BADGE_FILTERS.map((b) => (
-              <button
-                key={b}
-                onClick={() => props.onBadgeChange(b as 'All' | 'AMAST Aligned' | 'No SEA Competitor')}
-                className={cn(
-                  'px-2.5 py-1 rounded-md text-xs transition-all',
-                  props.selectedBadge === b
-                    ? 'bg-slate-200 text-slate-800'
-                    : 'text-slate-500 hover:text-slate-700'
-                )}
-              >
-                {b}
-              </button>
-            ))}
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[10px]">▾</span>
           </div>
         </div>
       </div>

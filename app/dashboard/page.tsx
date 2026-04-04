@@ -5,9 +5,11 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { FilterBar } from '@/components/dashboard/FilterBar';
 import { OpportunityCard } from '@/components/dashboard/OpportunityCard';
 import { Category, CurationStatus } from '@/types';
-import { Zap, Target, Globe, BarChart3 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Zap, Target, Globe, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { formatInTimeZone } from 'date-fns-tz';
+
+const PAGE_SIZE = 10;
 
 const MYT = 'Asia/Kuala_Lumpur';
 const todayMYT = () => formatInTimeZone(new Date(), MYT, 'yyyy-MM-dd');
@@ -55,6 +57,7 @@ export default function DashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState<'All' | Category>('All');
   const [selectedStatus, setSelectedStatus] = useState<'All' | CurationStatus>('All');
   const [selectedBadge, setSelectedBadge] = useState<BadgeFilter>('All');
+  const [page, setPage] = useState(1);
 
   const { data: availableDates = [] } = useQuery({
     queryKey: ['opportunity-dates'],
@@ -71,6 +74,7 @@ export default function DashboardPage() {
   const resolvedDate = selectedDate === PENDING ? (availableDates[0] ?? todayMYT()) : selectedDate;
 
   const params = useMemo(() => {
+    setPage(1);
     const p = new URLSearchParams({ date: resolvedDate });
     if (selectedCategory !== 'All') p.set('category', selectedCategory);
     if (selectedStatus !== 'All') p.set('status', selectedStatus);
@@ -96,6 +100,9 @@ export default function DashboardPage() {
       ? Math.round(opportunities.reduce((s: number, o: any) => s + (o.score ?? 0), 0) / opportunities.length)
       : 0;
 
+  const totalPages = Math.ceil(opportunities.length / PAGE_SIZE);
+  const pagedOpportunities = opportunities.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const allDates = availableDates.length > 0 ? availableDates : [resolvedDate];
 
   return (
@@ -118,22 +125,20 @@ export default function DashboardPage() {
           {/* Stats */}
           <div className="grid grid-cols-4 gap-4">
             {[
-              { label: 'Opportunities', value: opportunities.length, icon: Zap, color: 'text-primary' },
-              { label: 'AMAST Aligned', value: amastCount, icon: Target, color: 'text-emerald-600' },
-              { label: 'No SEA Competitor', value: noCompetitorCount, icon: Globe, color: 'text-secondary' },
-              { label: 'Avg Score', value: opportunities.length > 0 ? `${avgScore}/100` : '—', icon: BarChart3, color: 'text-accent' },
+              { label: 'Opportunities', value: opportunities.length, icon: Zap, accent: 'bg-violet-500', bg: 'bg-violet-50', border: 'border-violet-100', text: 'text-violet-700' },
+              { label: 'AMAST Aligned', value: amastCount, icon: Target, accent: 'bg-emerald-500', bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-700' },
+              { label: 'No SEA Competitor', value: noCompetitorCount, icon: Globe, accent: 'bg-teal-500', bg: 'bg-teal-50', border: 'border-teal-100', text: 'text-teal-700' },
+              { label: 'Avg Score', value: opportunities.length > 0 ? `${avgScore}/100` : '—', icon: BarChart3, accent: 'bg-amber-500', bg: 'bg-amber-50', border: 'border-amber-100', text: 'text-amber-700' },
             ].map((stat) => (
-              <Card key={stat.label}>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-muted border border-border ${stat.color}`}>
-                    <stat.icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
-                    <p className="text-lg font-bold text-foreground">{stat.value}</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <div key={stat.label} className="rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-3 shadow-sm">
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${stat.bg} ${stat.border} border`}>
+                  <stat.icon className={`h-4 w-4 ${stat.text}`} />
+                </div>
+                <div>
+                  <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wide">{stat.label}</p>
+                  <p className="text-xl font-bold text-slate-900 tabular-nums leading-tight">{stat.value}</p>
+                </div>
+              </div>
             ))}
           </div>
 
@@ -165,13 +170,51 @@ export default function DashboardPage() {
           ) : (
             <>
               <p className="text-xs text-muted-foreground">
-                Showing {opportunities.length} opportunit{opportunities.length === 1 ? 'y' : 'ies'}
+                Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, opportunities.length)} of {opportunities.length} opportunit{opportunities.length === 1 ? 'y' : 'ies'}
               </p>
               <div className="space-y-3">
-                {opportunities.map((opp: any) => (
+                {pagedOpportunities.map((opp: any) => (
                   <OpportunityCard key={opp.id} opportunity={opp} />
                 ))}
               </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                      <button
+                        key={p}
+                        onClick={() => setPage(p)}
+                        className={`h-8 w-8 rounded text-xs font-medium transition-colors ${
+                          p === page
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>
