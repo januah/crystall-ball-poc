@@ -1,12 +1,14 @@
 // =============================================================
 // Crystal Ball — Curation Helpers
 // =============================================================
-import { getAuthedClient } from './client';
+import { supabaseAdmin } from './client';
 import type { CurationStatus, OpportunityCurationRow } from './types';
 
 // ------------------------------------------------------------------
 // upsertCurationStatus
 // Creates or updates the user's curation status for an opportunity.
+// Auth is enforced at the API route layer; supabaseAdmin bypasses RLS
+// to avoid session-var issues with pgBouncer connection pooling.
 // ------------------------------------------------------------------
 export async function upsertCurationStatus(
   opportunityId: string,
@@ -14,9 +16,7 @@ export async function upsertCurationStatus(
   userRole: string,
   status: CurationStatus
 ): Promise<OpportunityCurationRow> {
-  const client = await getAuthedClient(userId, userRole);
-
-  const { data, error } = await client
+  const { data, error } = await supabaseAdmin
     .from('opportunity_curation')
     .upsert(
       { opportunity_id: opportunityId, user_id: userId, status },
@@ -39,10 +39,7 @@ export async function getUserCurationForDate(
   userRole: string,
   date: string  // 'YYYY-MM-DD'
 ): Promise<OpportunityCurationRow[]> {
-  const client = await getAuthedClient(userId, userRole);
-
-  // Get opportunity IDs that have a trend snapshot for this date
-  const { data: historyRows, error: histErr } = await client
+  const { data: historyRows, error: histErr } = await supabaseAdmin
     .from('opportunity_trend_history')
     .select('opportunity_id')
     .eq('run_date', date);
@@ -52,7 +49,7 @@ export async function getUserCurationForDate(
   const ids = (historyRows ?? []).map((r: any) => r.opportunity_id as string);
   if (ids.length === 0) return [];
 
-  const { data, error } = await client
+  const { data, error } = await supabaseAdmin
     .from('opportunity_curation')
     .select('*')
     .eq('user_id', userId)
