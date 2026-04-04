@@ -11,7 +11,7 @@ export function DarkModeToggle() {
   return (
     <Button
       variant="ghost"
-      size="icon"
+      size="sm"
       onClick={toggleTheme}
       aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
       className="h-8 w-8 rounded-full p-1.5 text-slate-400 hover:text-slate-200"
