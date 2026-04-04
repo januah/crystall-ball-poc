@@ -30,10 +30,26 @@ export type CreateUserInput = {
 export async function createUser(input: CreateUserInput): Promise<UserSafe> {
   const password_hash = await bcrypt.hash(input.password, BCRYPT_ROUNDS);
 
+  // Get the actual role ID from the role name
+  let actualRoleId = input.role_id;
+  if (input.role_id === 'admin' || input.role_id === 'analyst' || input.role_id === 'viewer') {
+    // Look up the role ID from the roles table
+    const { data: role, error: roleError } = await supabaseAdmin
+      .from('roles')
+      .select('id')
+      .eq('name', input.role_id)
+      .single();
+
+    if (roleError) throw new Error(`createUser: role lookup failed - ${roleError.message}`);
+    if (!role) throw new Error(`createUser: role not found - ${input.role_id}`);
+
+    actualRoleId = role.id;
+  }
+
   const payload: UserInsert = {
     email:         input.email,
     password_hash,
-    role_id:       input.role_id,
+    role_id:       actualRoleId,
     full_name:     input.full_name ?? null,
     department:    input.department ?? null,
     avatar_url:    input.avatar_url ?? null,
