@@ -78,7 +78,7 @@ function CreateUserModal({
               type={f.type}
               value={(form as any)[f.key]}
               onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-              className="dark:bg-input dark:border-border"
+              className="dark:bg-[#2a3341] dark:text-white dark:border-[#545454] dark:placeholder:text-slate-400"
             />
           </div>
         ))}
@@ -96,7 +96,7 @@ function CreateUserModal({
           </select>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={onClose} className="dark:bg-accent dark:hover:bg-accent/80">Cancel</Button>
+          <Button variant="ghost" onClick={onClose} className="bg-slate-200 text-slate-700 hover:bg-slate-300 dark:bg-slate-600 dark:text-slate-200 dark:hover:bg-slate-500">Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Creating…' : 'Create User'}
           </Button>
