@@ -125,19 +125,19 @@ function parseBusinessModel(raw: string | null | undefined): string {
 
     // If it's a simple string after parsing, return it directly
     if (typeof parsed === 'string') {
-      return parsed;
+      return parsed.replace(/\n/g, '\n').replace(/\t/g, '  '); // Normalize line breaks and tabs
     }
 
     // If it's an array, join the elements
     if (Array.isArray(parsed)) {
       return parsed.map(item => {
         if (typeof item === 'string') {
-          return item;
+          return item.replace(/\n/g, '\n').replace(/\t/g, '  ');
         } else if (typeof item === 'object') {
           // For objects in array, convert to key-value pairs
-          return Object.entries(item).map(([k, v]) => `${k}: ${v}`).join('\n');
+          return Object.entries(item).map(([k, v]) => `${k}: ${formatValue(v)}`).join('\n');
         }
-        return String(item);
+        return String(item).replace(/\n/g, '\n').replace(/\t/g, '  ');
       }).join('\n\n');
     }
 
@@ -148,18 +148,18 @@ function parseBusinessModel(raw: string | null | undefined): string {
 
       // Check for specific known fields
       if (parsed.revenue_streams) {
-        parts.push(`Revenue Streams: ${(Array.isArray(parsed.revenue_streams) ? parsed.revenue_streams.join(', ') : parsed.revenue_streams)}`);
+        parts.push(`Revenue Streams: ${formatValue(parsed.revenue_streams)}`);
       }
       if (parsed.pricing_models || parsed.pricing_tiers) {
         const pricing = parsed.pricing_models || parsed.pricing_tiers;
-        parts.push(`Pricing: ${(Array.isArray(pricing) ? pricing.join(', ') : typeof pricing === 'object' ? JSON.stringify(pricing) : pricing)}`);
+        parts.push(`Pricing: ${formatValue(pricing)}`);
       }
       if (parsed.estimated_revenue || parsed.estimated_annual_revenue) {
         const rev = parsed.estimated_revenue || parsed.estimated_annual_revenue;
-        parts.push(`Estimated Revenue: ${rev}`);
+        parts.push(`Estimated Revenue: ${formatValue(rev)}`);
       }
       if (parsed.business_model_canvas) {
-        parts.push(`Business Model Canvas: ${typeof parsed.business_model_canvas === 'object' ? JSON.stringify(parsed.business_model_canvas, null, 2) : parsed.business_model_canvas}`);
+        parts.push(`Business Model Canvas: ${formatValue(parsed.business_model_canvas)}`);
       }
 
       // If we handled specific fields, return those
@@ -170,21 +170,32 @@ function parseBusinessModel(raw: string | null | undefined): string {
       // Otherwise, convert all properties to readable format
       return Object.entries(parsed)
         .map(([key, value]) => {
-          const formattedValue = typeof value === 'object' && value !== null
-            ? Array.isArray(value)
-              ? value.join(', ')
-              : JSON.stringify(value, null, 2)
-            : String(value);
-          return `${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${formattedValue}`;
+          return `${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${formatValue(value)}`;
         })
         .join('\n\n');
     }
 
     // For other primitive types, return as string
-    return String(parsed);
+    return String(parsed).replace(/\n/g, '\n').replace(/\t/g, '  ');
   } catch (e) {
     // If not valid JSON, return the cleaned raw string
-    return cleanedRaw;
+    return cleanedRaw.replace(/\n/g, '\n').replace(/\t/g, '  ');
+  }
+}
+
+// Helper function to properly format values
+function formatValue(value: any): string {
+  if (typeof value === 'string') {
+    return value;
+  } else if (Array.isArray(value)) {
+    return value.join(', ');
+  } else if (typeof value === 'object' && value !== null) {
+    // For objects, format as "key: value" pairs
+    return Object.entries(value)
+      .map(([k, v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v}`)
+      .join(', ');
+  } else {
+    return String(value);
   }
 }
 
