@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Toast, useToast } from '@/components/ui/toast';
-import { Activity, CheckCircle2, AlertTriangle, XCircle, Play, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
+import { Activity, CheckCircle2, AlertTriangle, XCircle, Play, Square, ChevronDown, ChevronUp, Loader2, Clock, CalendarClock } from 'lucide-react';
 
 type LogStatus = 'success' | 'partial' | 'failed' | 'running';
 
@@ -74,6 +74,12 @@ function hasDetails(log: CronLog): boolean {
   return log.status !== 'success';
 }
 
+interface CronConfig {
+  is_paused: boolean;
+  schedule: string;
+  next_run: string | null;
+}
+
 export default function CronLogsPage() {
   const queryClient = useQueryClient();
   const { toast, showToast, hideToast } = useToast();
@@ -90,12 +96,42 @@ export default function CronLogsPage() {
     refetchInterval: 10_000,
   });
 
+  const { data: cronConfig, refetch: refetchConfig } = useQuery<CronConfig>({
+    queryKey: ['cron-config'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/cron-config');
+      if (!res.ok) return { is_paused: false, schedule: '0 23 * * *', next_run: null };
+      const { data } = await res.json();
+      return data;
+    },
+  });
+
+  const pauseMutation = useMutation({
+    mutationFn: async (isPaused: boolean) => {
+      const res = await fetch('/api/admin/cron-config', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_paused: isPaused }),
+      });
+      if (!res.ok) throw new Error('Failed to update cron config');
+    },
+    onSuccess: (_, isPaused) => {
+      showToast(isPaused ? 'Cron job stopped — will not run until resumed.' : 'Cron job resumed.');
+      refetchConfig();
+      queryClient.invalidateQueries({ queryKey: ['cron-config'] });
+    },
+    onError: () => showToast('Failed to update cron config. Ensure cron_config table exists in Supabase.'),
+  });
+
   // Derive running status client-side: status=failed + no completed_at = still in progress
   const logs = rawLogs.map((l) =>
     l.status === 'failed' && !l.completed_at ? { ...l, status: 'running' as LogStatus } : l
   );
 
   const hasActiveRun = logs.some((l) => l.status === 'running');
+  const lastRun = logs[0]?.started_at ?? null;
+  const isPaused = cronConfig?.is_paused ?? false;
+  const nextRun = cronConfig?.next_run ?? null;
 
   const triggerMutation = useMutation({
     mutationFn: async () => {
@@ -127,22 +163,55 @@ export default function CronLogsPage() {
         <div className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-md px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-bold text-foreground">Cron Job Logs</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Daily pipeline runs · auto-refreshes every 30s</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold text-foreground">Cron Job Logs</h1>
+                {isPaused && (
+                  <span className="text-xs font-medium bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Stopped</span>
+                )}
+              </div>
+              <div className="flex items-center gap-4 mt-1">
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  Last run: <span className="text-foreground font-medium">{fmtTime(lastRun)}</span>
+                </span>
+                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <CalendarClock className="h-3 w-3" />
+                  Next run: <span className={`font-medium ${isPaused ? 'text-red-500' : 'text-foreground'}`}>
+                    {isPaused ? 'Paused' : fmtTime(nextRun)}
+                  </span>
+                </span>
+                <span className="text-xs text-muted-foreground">Schedule: <code className="text-xs bg-muted px-1 rounded">{cronConfig?.schedule ?? '0 23 * * *'}</code></span>
+              </div>
             </div>
-            <Button
-              size="sm"
-              onClick={() => triggerMutation.mutate()}
-              disabled={triggerMutation.isPending || hasActiveRun}
-              title={hasActiveRun ? 'A run is already in progress' : undefined}
-            >
-              {hasActiveRun
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
-                : triggerMutation.isPending
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Triggering…</>
-                  : <><Play className="h-4 w-4" /> Run Now</>
-              }
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant={isPaused ? 'default' : 'outline'}
+                onClick={() => pauseMutation.mutate(!isPaused)}
+                disabled={pauseMutation.isPending}
+                className={isPaused ? '' : 'text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700'}
+              >
+                {pauseMutation.isPending
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving…</>
+                  : isPaused
+                    ? <><Play className="h-4 w-4" /> Resume</>
+                    : <><Square className="h-4 w-4" /> Stop</>
+                }
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => triggerMutation.mutate()}
+                disabled={triggerMutation.isPending || hasActiveRun || isPaused}
+                title={hasActiveRun ? 'A run is already in progress' : isPaused ? 'Cron is stopped' : undefined}
+              >
+                {hasActiveRun
+                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
+                  : triggerMutation.isPending
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Triggering…</>
+                    : <><Play className="h-4 w-4" /> Run Now</>
+                }
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -196,9 +265,8 @@ export default function CronLogsPage() {
                     const isExpanded = expandedRow === log.id;
                     const showable = hasDetails(log);
                     return (
-                      <>
+                      <React.Fragment key={log.id}>
                         <TableRow
-                          key={log.id}
                           className={`${isExpanded ? 'bg-muted/40' : ''} ${showable ? 'cursor-pointer hover:bg-muted/20' : ''}`}
                           onClick={() => showable && setExpandedRow(isExpanded ? null : log.id)}
                         >
@@ -263,7 +331,7 @@ export default function CronLogsPage() {
                             </TableCell>
                           </TableRow>
                         )}
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 </TableBody>

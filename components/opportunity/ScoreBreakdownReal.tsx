@@ -28,11 +28,11 @@ export function ScoreBreakdownReal(props: ScoreBreakdownRealProps) {
             <div className="flex justify-between text-xs">
               <span className="text-slate-600">
                 {f.label}
-                <span className="text-slate-400 ml-1">× {Math.round(f.weight * 100)}%</span>
+                <span className="text-slate-500 ml-1">× {Math.round(f.weight * 100)}%</span>
               </span>
               <span className="text-slate-700 font-medium">
-                {raw}<span className="text-slate-400">/100</span>
-                <span className="text-slate-400 ml-1">= {contribution}</span>
+                {raw}<span className="text-slate-500">/100</span>
+                <span className="text-slate-500 ml-1">= {contribution}</span>
               </span>
             </div>
             <div className="h-1.5 w-full rounded-full bg-slate-200">
@@ -48,7 +48,7 @@ export function ScoreBreakdownReal(props: ScoreBreakdownRealProps) {
         <span className="text-sm font-semibold text-slate-700">Total Score</span>
         <span className="text-lg font-bold text-violet-400">
           {Math.round(props.scoreTotal)}
-          <span className="text-slate-400 text-sm">/100</span>
+          <span className="text-slate-500 text-sm">/100</span>
         </span>
       </div>
     </div>

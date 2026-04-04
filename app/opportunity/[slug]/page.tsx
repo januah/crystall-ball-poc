@@ -136,9 +136,9 @@ export default function OpportunityDetailPage() {
               </Button>
               <div className="h-4 w-px bg-slate-200" />
               <div>
-                <span className="text-xs text-slate-400">#{opp.rank}</span>
+                <span className="text-xs text-slate-600">#{opp.rank}</span>
                 <span className="text-xs text-slate-500 mx-2">·</span>
-                <span className="text-xs text-slate-400">{opp.category}</span>
+                <span className="text-xs text-slate-600">{opp.category}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -168,7 +168,7 @@ export default function OpportunityDetailPage() {
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{opp.title}</h1>
                 <p className="mt-2 text-slate-600">{opp.summary}</p>
-                <div className="flex items-center gap-2 mt-3 text-xs text-slate-400">
+                <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
                   <Calendar className="h-3 w-3" />
                   Discovered {opp.dateDiscovered}
                 </div>
@@ -176,7 +176,7 @@ export default function OpportunityDetailPage() {
 
               <Card>
                 <CardHeader><CardTitle className="text-sm">AI Summary</CardTitle></CardHeader>
-                <CardContent className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{opp.fullSummary}</CardContent>
+                <CardContent className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{opp.fullSummary}</CardContent>
               </Card>
 
               <Card>
@@ -188,7 +188,7 @@ export default function OpportunityDetailPage() {
                     </Badge>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-slate-400 leading-relaxed">{opp.hypeExplanation}</CardContent>
+                <CardContent className="text-sm text-slate-600 leading-relaxed">{opp.hypeExplanation}</CardContent>
               </Card>
 
               <Card>
@@ -197,7 +197,7 @@ export default function OpportunityDetailPage() {
                   {opp.velocityData?.length > 0 ? (
                     <VelocityChart data={opp.velocityData} />
                   ) : (
-                    <p className="text-xs text-slate-400">No velocity data yet.</p>
+                    <p className="text-xs text-slate-500">No velocity data yet.</p>
                   )}
                 </CardContent>
               </Card>
@@ -211,12 +211,41 @@ export default function OpportunityDetailPage() {
                       : <Badge variant="danger">🔴 Competitor Exists</Badge>}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-slate-400 leading-relaxed">{opp.seaAnalysis}</CardContent>
+                <CardContent className="text-sm text-slate-600 leading-relaxed">{opp.seaAnalysis}</CardContent>
               </Card>
 
               <Card>
                 <CardHeader><CardTitle className="text-sm">Business Model Estimate</CardTitle></CardHeader>
-                <CardContent className="text-sm text-slate-400 leading-relaxed">{opp.businessModel}</CardContent>
+                <CardContent>
+                  {(() => {
+                    const fmtKey = (k: string) => k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    try {
+                      const parsed = JSON.parse(opp.businessModel);
+                      return (
+                        <div className="space-y-3">
+                          {Object.entries(parsed).map(([key, value]) => (
+                            <div key={key}>
+                              <p className="text-xs font-semibold text-slate-700 mb-1">{fmtKey(key)}</p>
+                              {Array.isArray(value) ? (
+                                <ul className="space-y-0.5">
+                                  {(value as string[]).map((item, i) => (
+                                    <li key={i} className="text-sm text-slate-600 flex items-start gap-1.5">
+                                      <span className="text-slate-400 mt-0.5">•</span>{item}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-sm text-slate-600">{String(value)}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } catch {
+                      return <p className="text-sm text-slate-600 leading-relaxed">{opp.businessModel}</p>;
+                    }
+                  })()}
+                </CardContent>
               </Card>
 
               <Card>
@@ -225,7 +254,7 @@ export default function OpportunityDetailPage() {
                   {opp.trendHistory?.length > 0 ? (
                     <TrendHistory history={opp.trendHistory} />
                   ) : (
-                    <p className="text-xs text-slate-400">No trend history yet.</p>
+                    <p className="text-xs text-slate-500">No trend history yet.</p>
                   )}
                 </CardContent>
               </Card>
@@ -260,7 +289,7 @@ export default function OpportunityDetailPage() {
                     <div className="space-y-2 border-t border-slate-100 pt-3">
                       {noteHistory.map((n: any) => (
                         <div key={n.id} className="text-xs text-slate-500 border-b border-slate-100 pb-2">
-                          <span className="text-slate-400">{new Date(n.created_at).toLocaleString('en-MY')} (v{n.version})</span>
+                          <span className="text-slate-500">{new Date(n.created_at).toLocaleString('en-MY')} (v{n.version})</span>
                           <p className="mt-1">{n.note_text}</p>
                         </div>
                       ))}
@@ -315,7 +344,23 @@ export default function OpportunityDetailPage() {
                         <Badge key={p} variant="default">{p}</Badge>
                       ))}
                     </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">{opp.amastDetails}</p>
+                    {(() => {
+                      try {
+                        const parsed = JSON.parse(opp.amastDetails);
+                        return (
+                          <div className="space-y-2">
+                            {Object.entries(parsed).map(([key, value]) => (
+                              <div key={key}>
+                                <span className="text-xs font-semibold text-slate-700">{key}: </span>
+                                <span className="text-xs text-slate-600 leading-relaxed">{String(value)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      } catch {
+                        return <p className="text-xs text-slate-600 leading-relaxed">{opp.amastDetails}</p>;
+                      }
+                    })()}
                   </CardContent>
                 </Card>
               )}
