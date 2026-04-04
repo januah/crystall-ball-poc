@@ -303,6 +303,7 @@ export default function OpportunityDetailPage() {
                     value={currentNotes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add your private notes here... (visible to logged-in users only)"
+                    className="dark:text-foreground dark:bg-background dark:border-border"
                   />
                   <div className="flex items-center gap-3">
                     <Button
