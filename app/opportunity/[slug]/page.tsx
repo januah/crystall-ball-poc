@@ -35,15 +35,15 @@ function Section({ icon: Icon, title, children, badge }: {
 }) {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-3.5">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-50 border border-violet-100">
-          <Icon className="h-3.5 w-3.5 text-violet-600" />
+      <div className="flex items-center gap-2.5 border-b border-border px-5 py-3.5">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-violet-50 border border-violet-100 dark:bg-violet-900/30 dark:border-violet-700">
+          <Icon className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
         </div>
-        <h2 className="text-sm font-semibold text-slate-800">{title}</h2>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
         {badge && <div className="ml-auto">{badge}</div>}
       </div>
       <div className="px-5 py-4">{children}</div>
-    </div>
+      </div>
   );
 }
 
@@ -152,7 +152,7 @@ export default function OpportunityDetailPage() {
   if (isLoading) return <div className="flex min-h-screen"><Sidebar /><DetailSkeleton /></div>;
   if (isError || !opp) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-slate-500">
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
         Opportunity not found.
       </div>
     );
@@ -162,7 +162,7 @@ export default function OpportunityDetailPage() {
   const circ = 2 * Math.PI * 42;
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-background">
       {toast && <Toast message={toast} onClose={hideToast} />}
       <Sidebar />
       <main className="flex-1 ml-[220px]">
@@ -176,18 +176,18 @@ export default function OpportunityDetailPage() {
                 await queryClient.invalidateQueries({ queryKey: ['opportunities'] });
                 await queryClient.invalidateQueries({ queryKey: ['opportunity-dates'] });
                 window.location.assign('/dashboard');
-              }} className="text-slate-500 hover:text-slate-800 gap-1.5">
+              }} className="text-muted-foreground hover:text-foreground gap-1.5">
                 <ArrowLeft className="h-3.5 w-3.5" /> Back
               </Button>
-              <div className="h-4 w-px bg-slate-200" />
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="font-semibold text-slate-800">#{opp.rank}</span>
-                <span className="text-slate-300">·</span>
-                <span className="rounded-md bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 font-medium">{opp.category}</span>
+              <div className="h-4 w-px bg-border" />
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">#{opp.rank}</span>
+                <span className="text-border">·</span>
+                <span className="rounded-md bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 font-medium dark:bg-violet-900/30 dark:border-violet-700 dark:text-violet-300">{opp.category}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
+              <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
                 {STATUSES.map((s) => (
                   <button
                     key={s}
@@ -196,7 +196,7 @@ export default function OpportunityDetailPage() {
                       'flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all',
                       currentStatus === s
                         ? STATUS_CONFIG[s].active
-                        : 'text-slate-500 hover:text-slate-700'
+                        : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
                     {currentStatus === s && (
@@ -206,7 +206,7 @@ export default function OpportunityDetailPage() {
                   </button>
                 ))}
               </div>
-              <Button size="sm" variant="outline" onClick={handleShare} className="gap-1.5 text-slate-600">
+              <Button size="sm" variant="outline" onClick={handleShare} className="gap-1.5 text-muted-foreground hover:text-foreground">
                 <Share2 className="h-3.5 w-3.5" /> Share
               </Button>
             </div>
@@ -248,7 +248,7 @@ export default function OpportunityDetailPage() {
               </div>
 
               <Section icon={FileText} title="AI Summary">
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{opp.fullSummary}</p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{opp.fullSummary}</p>
               </Section>
 
               <Section
@@ -258,21 +258,21 @@ export default function OpportunityDetailPage() {
                   <span className={cn(
                     'inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium',
                     opp.hypeType === 'Traction'
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                      : 'bg-orange-50 border-orange-200 text-orange-700'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300'
+                      : 'bg-orange-50 border-orange-200 text-orange-700 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300'
                   )}>
                     {opp.hypeType === 'Traction' ? <TrendingUp className="h-3 w-3" /> : <Flame className="h-3 w-3" />}
                     {opp.hypeType}
                   </span>
                 }
               >
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{opp.hypeExplanation}</p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{opp.hypeExplanation}</p>
               </Section>
 
               <Section icon={Cpu} title="Score Velocity">
                 {opp.velocityData?.length > 0
                   ? <VelocityChart data={opp.velocityData} />
-                  : <p className="text-sm text-slate-500">No velocity data yet.</p>}
+                  : <p className="text-sm text-muted-foreground">No velocity data yet.</p>}
               </Section>
 
               <Section
@@ -282,17 +282,17 @@ export default function OpportunityDetailPage() {
                   ? <StatusBadge type="success" label="No SEA Competitor" />
                   : <StatusBadge type="danger" label="Competitor Exists" />}
               >
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{opp.seaAnalysis}</p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{opp.seaAnalysis}</p>
               </Section>
 
               <Section icon={DollarSign} title="Business Model Estimate">
-                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{opp.businessModel}</p>
+                <p className="text-sm text-foreground leading-relaxed whitespace-pre-line">{opp.businessModel}</p>
               </Section>
 
               <Section icon={History} title="Historical Appearances">
                 {opp.trendHistory?.length > 0
                   ? <TrendHistory history={opp.trendHistory} />
-                  : <p className="text-sm text-slate-500">No trend history yet.</p>}
+                  : <p className="text-sm text-muted-foreground">No trend history yet.</p>}
               </Section>
 
               {/* Notes */}
@@ -303,7 +303,7 @@ export default function OpportunityDetailPage() {
                     value={currentNotes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Add your private notes here... (visible to logged-in users only)"
-                    className="text-sm text-slate-700 placeholder:text-slate-400"
+                    className="text-sm text-foreground placeholder:text-muted-foreground"
                   />
                   <div className="flex items-center gap-3">
                     <Button
@@ -314,7 +314,7 @@ export default function OpportunityDetailPage() {
                       {notesMutation.isPending ? 'Saving...' : 'Save Notes'}
                     </Button>
                     <button
-                      className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors"
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
                       onClick={() => { setShowNoteHistory(!showNoteHistory); refetchHistory(); }}
                     >
                       {showNoteHistory ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -322,11 +322,11 @@ export default function OpportunityDetailPage() {
                     </button>
                   </div>
                   {showNoteHistory && noteHistory.length > 0 && (
-                    <div className="space-y-2 border-t border-slate-100 pt-3">
+                    <div className="space-y-2 border-t border-border pt-3">
                       {noteHistory.map((n: any) => (
-                        <div key={n.id} className="text-xs border-b border-slate-100 pb-2 last:border-0">
-                          <span className="text-slate-400">{new Date(n.created_at).toLocaleString('en-MY')} (v{n.version})</span>
-                          <p className="mt-1 text-slate-600">{n.note_text}</p>
+                        <div key={n.id} className="text-xs border-b border-border pb-2 last:border-0">
+                          <span className="text-muted-foreground">{new Date(n.created_at).toLocaleString('en-MY')} (v{n.version})</span>
+                          <p className="mt-1 text-foreground">{n.note_text}</p>
                         </div>
                       ))}
                     </div>
@@ -354,7 +354,7 @@ export default function OpportunityDetailPage() {
                     <div className="text-xs text-slate-400 font-medium">/100</div>
                   </div>
                 </div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Crystal Ball Score</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Crystal Ball Score</p>
               </div>
 
               {/* Score breakdown */}
@@ -376,9 +376,9 @@ export default function OpportunityDetailPage() {
 
               {/* AMAST alignment */}
               {opp.amastAligned && (
-                <div className="rounded-xl border border-indigo-200 bg-indigo-50 shadow-sm overflow-hidden">
-                  <div className="border-b border-indigo-100 px-4 py-3">
-                    <h3 className="text-sm font-semibold text-indigo-800">AMAST Alignment</h3>
+                <div className="rounded-xl border border-indigo-200 bg-indigo-50 shadow-sm overflow-hidden dark:bg-indigo-900/20 dark:border-indigo-700/50">
+                  <div className="border-b border-indigo-100 px-4 py-3 dark:border-indigo-700/50">
+                    <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-200">AMAST Alignment</h3>
                   </div>
                   <div className="px-4 py-4 space-y-3">
                     <div className="flex flex-wrap gap-1.5">
@@ -388,7 +388,7 @@ export default function OpportunityDetailPage() {
                         </span>
                       ))}
                     </div>
-                    <p className="text-xs text-indigo-700 leading-relaxed whitespace-pre-line">{opp.amastDetails}</p>
+                    <p className="text-xs text-indigo-700 leading-relaxed whitespace-pre-line dark:text-indigo-300">{opp.amastDetails}</p>
                   </div>
                 </div>
               )}
@@ -407,8 +407,8 @@ export default function OpportunityDetailPage() {
                     { label: 'Discovered',     value: opp.dateDiscovered },
                   ].map(({ label, value }) => (
                     <div key={label} className="flex items-center justify-between py-2 text-xs">
-                      <span className="text-slate-400">{label}</span>
-                      <span className="text-slate-800 font-medium">{value}</span>
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="text-foreground font-medium">{value}</span>
                     </div>
                   ))}
                 </div>
