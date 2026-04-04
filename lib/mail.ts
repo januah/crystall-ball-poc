@@ -20,7 +20,7 @@ export async function sendInviteEmail({
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const displayName = fullName ?? to;
 
-  const res = await fetch(`${AGENTMAIL_API}/inboxes/${inboxId}/messages`, {
+  const res = await fetch(`${AGENTMAIL_API}/inboxes/${encodeURIComponent(inboxId)}/messages/send`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
