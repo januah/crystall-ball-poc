@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
 import { listAllUsers, createUser } from '@/lib/supabase/users';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import { sendInviteEmail } from '@/lib/mail';
 
 // GET /api/users — admin only (enforced by middleware)
 export async function GET(req: NextRequest) {
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
       role_id: roleId,
       created_by: admin.id,
     });
+
+    await sendInviteEmail({ to: email, fullName: fullName ?? null, tempPassword: password });
 
     return NextResponse.json({ success: true, data: user }, { status: 201 });
   } catch (err) {
