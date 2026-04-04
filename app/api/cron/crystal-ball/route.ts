@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { runPipeline } from '@/lib/cron/pipeline';
 import { createCronLog, updateCronLog, PipelineLogger } from '@/lib/cron/logger';
 import { sendFailureAlert } from '@/lib/cron/whatsapp';
+import { supabaseAdmin } from '@/lib/supabase/client';
 
 // Vercel Pro plan: 300s max duration
 export const maxDuration = 300;
@@ -21,6 +22,21 @@ function isAuthorized(req: NextRequest): boolean {
 export async function GET(req: NextRequest) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Check if cron is paused
+  try {
+    const { data: config } = await supabaseAdmin
+      .from('cron_config')
+      .select('is_paused')
+      .eq('id', 1)
+      .maybeSingle();
+    if (config?.is_paused) {
+      console.log('[cron] Skipped — cron is paused.');
+      return NextResponse.json({ success: true, message: 'Cron is paused — skipped.' });
+    }
+  } catch {
+    // cron_config table not yet created — proceed normally
   }
 
   const startedAt = new Date().toISOString();

@@ -39,16 +39,24 @@ export function uiCurationToDb(status: CurationStatus): string {
 
 // ── Trend history → velocity chart data ─────────────────────────
 export function adaptTrendHistoryToVelocityData(
-  history: Pick<TrendHistoryRow, 'run_date' | 'score_total'>[]
+  history: Pick<TrendHistoryRow, 'run_date' | 'score_total' | 'score_velocity' | 'score_traction' | 'score_sea_competition' | 'score_amast_alignment' | 'score_market_size'>[]
 ) {
   const sorted = [...history].sort(
     (a, b) => new Date(a.run_date).getTime() - new Date(b.run_date).getTime()
   );
-  return sorted.map((h) => ({
-    month: format(new Date(h.run_date), 'MMM d'),
-    score: Math.round(h.score_total ?? 0),
-    isRecent: isAfter(new Date(h.run_date), TWO_WEEKS_AGO),
-  }));
+  return sorted.map((h) => {
+    const fallback =
+      (h.score_velocity ?? 0) +
+      (h.score_traction ?? 0) +
+      (h.score_sea_competition ?? 0) +
+      (h.score_amast_alignment ?? 0) +
+      (h.score_market_size ?? 0);
+    return {
+      month: format(new Date(h.run_date), 'MMM d'),
+      score: Math.round(h.score_total ?? fallback),
+      isRecent: isAfter(new Date(h.run_date), TWO_WEEKS_AGO),
+    };
+  });
 }
 
 // ── Trend history → TrendEntry[] for TrendHistory component ─────
