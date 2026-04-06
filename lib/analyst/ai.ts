@@ -142,25 +142,36 @@ async function callClaudeFallback(input: AnalystInput): Promise<AnalystResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured — Claude fallback unavailable.');
 
-  console.log(`[analyst] OpenRouter exhausted. Falling back to Claude SDK (${CLAUDE_FALLBACK_MODEL})…`);
+  console.log(`[analyst] Calling Anthropic SDK — model: ${CLAUDE_FALLBACK_MODEL}`);
 
   const client = new Anthropic({ apiKey });
 
-  const response = await client.messages.create({
-    model:      CLAUDE_FALLBACK_MODEL,
-    max_tokens: 4096,
-    system:     ANALYST_SYSTEM_PROMPT,
-    messages:   [{ role: 'user', content: buildUserMessage(input) }],
-  });
+  let response;
+  try {
+    response = await client.messages.create({
+      model:      CLAUDE_FALLBACK_MODEL,
+      max_tokens: 4096,
+      system:     ANALYST_SYSTEM_PROMPT,
+      messages:   [{ role: 'user', content: buildUserMessage(input) }],
+    });
+    console.log(`[analyst] Anthropic SDK response received. stop_reason: ${response.stop_reason}, content blocks: ${response.content.length}`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[analyst] Anthropic SDK call failed: ${msg}`);
+    throw err;
+  }
 
   const block = response.content.find((b) => b.type === 'text');
   if (!block || block.type !== 'text') {
-    throw new Error('Claude fallback returned no text content.');
+    console.error(`[analyst] No text block in response. Content:`, JSON.stringify(response.content));
+    throw new Error('Claude returned no text content.');
   }
 
-  // parseReport throws on bad JSON — let it propagate (Claude should always comply)
+  console.log(`[analyst] Raw response length: ${block.text.length} chars`);
+  console.log(`[analyst] Raw response preview: ${block.text.slice(0, 300)}`);
+
   const report = parseReport(block.text, CLAUDE_FALLBACK_MODEL);
-  console.log(`[analyst] Claude fallback success.`);
+  console.log(`[analyst] JSON parsed successfully.`);
   return { report, model_used: `anthropic/${CLAUDE_FALLBACK_MODEL}` };
 }
 
@@ -172,29 +183,29 @@ export interface AnalystResult {
 }
 
 export async function callAnalystAI(input: AnalystInput): Promise<AnalystResult> {
-  const messages = [
-    { role: 'system', content: ANALYST_SYSTEM_PROMPT },
-    { role: 'user',   content: buildUserMessage(input) },
-  ];
+  // OpenRouter free-model chain — temporarily disabled; using Anthropic SDK directly.
+  // Re-enable by uncommenting the block below and removing the direct fallback call.
+  //
+  // const messages = [
+  //   { role: 'system', content: ANALYST_SYSTEM_PROMPT },
+  //   { role: 'user',   content: buildUserMessage(input) },
+  // ];
+  // const models = await getFreeModels();
+  // for (const model of models) {
+  //   try {
+  //     console.log(`[analyst] Trying: ${model}`);
+  //     const content = await callOpenRouter(messages, model);
+  //     const report  = parseReport(content, model);
+  //     console.log(`[analyst] Success: ${model}`);
+  //     return { report, model_used: model };
+  //   } catch (err) {
+  //     if (err instanceof SkipModelError) {
+  //       console.warn(`[analyst] Skipping — ${err.message}`);
+  //       continue;
+  //     }
+  //     throw err;
+  //   }
+  // }
 
-  const models = await getFreeModels();
-
-  for (const model of models) {
-    try {
-      console.log(`[analyst] Trying: ${model}`);
-      const content = await callOpenRouter(messages, model);
-      const report  = parseReport(content, model);
-      console.log(`[analyst] Success: ${model}`);
-      return { report, model_used: model };
-    } catch (err) {
-      if (err instanceof SkipModelError) {
-        console.warn(`[analyst] Skipping — ${err.message}`);
-        continue;
-      }
-      throw err; // unexpected error — propagate
-    }
-  }
-
-  // All free OpenRouter models failed — try Claude directly via Anthropic SDK
   return callClaudeFallback(input);
 }

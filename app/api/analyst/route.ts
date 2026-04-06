@@ -25,11 +25,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'amast_verticals must be a non-empty array' }, { status: 400 });
     }
 
+    console.log('[analyst/route] Starting analysis for:', body.opportunity_title);
     const { report, model_used } = await callAnalystAI(body);
+    console.log('[analyst/route] Analysis complete. model_used:', model_used);
 
     return NextResponse.json({ success: true, data: report, model_used });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
+    const stack   = err instanceof Error ? err.stack : undefined;
+    console.error('[analyst/route] ERROR:', message);
+    if (stack) console.error('[analyst/route] STACK:', stack);
     if (message === 'Unauthenticated') {
       return NextResponse.json({ success: false, error: message }, { status: 401 });
     }
