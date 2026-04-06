@@ -1,7 +1,9 @@
 // Analyst AI caller — dynamically fetches the current free model list from
 // OpenRouter, caches it for 1 hour, and tries models in sequence until one
 // succeeds. Falls back to a hardcoded seed list if the API is unreachable.
+// If ALL OpenRouter free models fail, falls back to Anthropic SDK (Claude Haiku).
 
+import Anthropic from '@anthropic-ai/sdk';
 import { ANALYST_SYSTEM_PROMPT, buildUserMessage } from './prompt';
 import type { AnalystInput, AnalystReport } from './types';
 
@@ -132,6 +134,36 @@ function parseReport(raw: string, model: string): AnalystReport {
   throw new SkipModelError(`${model} returned non-JSON content: ${cleaned.slice(0, 200)}`);
 }
 
+// ─── Claude SDK fallback ─────────────────────────────────────────────
+
+const CLAUDE_FALLBACK_MODEL = 'claude-haiku-4-5-20251001';
+
+async function callClaudeFallback(input: AnalystInput): Promise<AnalystResult> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not configured — Claude fallback unavailable.');
+
+  console.log(`[analyst] OpenRouter exhausted. Falling back to Claude SDK (${CLAUDE_FALLBACK_MODEL})…`);
+
+  const client = new Anthropic({ apiKey });
+
+  const response = await client.messages.create({
+    model:      CLAUDE_FALLBACK_MODEL,
+    max_tokens: 4096,
+    system:     ANALYST_SYSTEM_PROMPT,
+    messages:   [{ role: 'user', content: buildUserMessage(input) }],
+  });
+
+  const block = response.content.find((b) => b.type === 'text');
+  if (!block || block.type !== 'text') {
+    throw new Error('Claude fallback returned no text content.');
+  }
+
+  // parseReport throws on bad JSON — let it propagate (Claude should always comply)
+  const report = parseReport(block.text, CLAUDE_FALLBACK_MODEL);
+  console.log(`[analyst] Claude fallback success.`);
+  return { report, model_used: `anthropic/${CLAUDE_FALLBACK_MODEL}` };
+}
+
 // ─── Main export ─────────────────────────────────────────────────────
 
 export interface AnalystResult {
@@ -163,5 +195,6 @@ export async function callAnalystAI(input: AnalystInput): Promise<AnalystResult>
     }
   }
 
-  throw new Error('All free models are currently unavailable. Please try again in a few minutes.');
+  // All free OpenRouter models failed — try Claude directly via Anthropic SDK
+  return callClaudeFallback(input);
 }
