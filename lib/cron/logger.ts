@@ -1,6 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabase/client';
 
-export type CronLogStatus = 'success' | 'partial' | 'failed';
+export type CronLogStatus = 'success' | 'partial' | 'failed' | 'running';
 
 export interface StepLog {
   ts: string;
