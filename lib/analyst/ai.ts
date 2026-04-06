@@ -150,11 +150,14 @@ async function callClaudeFallback(input: AnalystInput): Promise<AnalystResult> {
   try {
     response = await client.messages.create({
       model:      CLAUDE_FALLBACK_MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system:     ANALYST_SYSTEM_PROMPT,
       messages:   [{ role: 'user', content: buildUserMessage(input) }],
     });
     console.log(`[analyst] Anthropic SDK response received. stop_reason: ${response.stop_reason}, content blocks: ${response.content.length}`);
+    if (response.stop_reason === 'max_tokens') {
+      throw new Error(`Response truncated (max_tokens hit). Raw length so far: ${response.content.find(b => b.type === 'text') ? (response.content.find(b => b.type === 'text') as any).text.length : 0} chars. Increase max_tokens.`);
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[analyst] Anthropic SDK call failed: ${msg}`);
