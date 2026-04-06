@@ -1,59 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/session';
-import { ANALYST_SYSTEM_PROMPT, buildUserMessage } from '@/lib/analyst/prompt';
-import type { AnalystInput, AnalystReport } from '@/lib/analyst/types';
+import { callAnalystAI } from '@/lib/analyst/ai';
+import type { AnalystInput } from '@/lib/analyst/types';
 
 export const maxDuration = 120;
-
-const ANALYST_MODEL =
-  process.env.ANALYST_AI_MODEL ?? 'google/gemma-3-27b-it:free';
-
-async function callAnalystAI(input: AnalystInput): Promise<AnalystReport> {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'https://crystal-ball.vercel.app',
-      'X-Title': 'Crystal Ball Analyst',
-    },
-    body: JSON.stringify({
-      model: ANALYST_MODEL,
-      messages: [
-        { role: 'system', content: ANALYST_SYSTEM_PROMPT },
-        { role: 'user',   content: buildUserMessage(input) },
-      ],
-      temperature: 0.2,
-      max_tokens: 4000,
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    throw new Error(`AI API error ${res.status}: ${body.slice(0, 300)}`);
-  }
-
-  const json = await res.json();
-  const content: string = json?.choices?.[0]?.message?.content;
-  if (typeof content !== 'string') {
-    throw new Error('Unexpected AI response shape');
-  }
-
-  // Strip markdown code fences if model wraps the JSON
-  const cleaned = content
-    .trim()
-    .replace(/^```(?:json)?\n?/i, '')
-    .replace(/\n?```$/i, '')
-    .trim();
-
-  try {
-    return JSON.parse(cleaned) as AnalystReport;
-  } catch {
-    const match = cleaned.match(/(\{[\s\S]*\})/);
-    if (match) return JSON.parse(match[1]) as AnalystReport;
-    throw new Error(`AI returned non-JSON content: ${cleaned.slice(0, 400)}`);
-  }
-}
 
 // POST /api/analyst
 export async function POST(req: NextRequest) {
