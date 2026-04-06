@@ -7,7 +7,7 @@ import type { AnalystInput, AnalystReport } from './types';
 const PRIMARY_MODEL =
   process.env.ANALYST_PRIMARY_MODEL ?? 'google/gemma-3-27b-it:free';
 const FALLBACK_MODEL =
-  process.env.ANALYST_FALLBACK_MODEL ?? 'mistralai/mistral-7b-instruct:free';
+  process.env.ANALYST_FALLBACK_MODEL ?? 'qwen/qwen3.6-plus:free';
 
 class RateLimitError extends Error {
   constructor(msg: string) {
