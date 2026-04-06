@@ -13,6 +13,11 @@ const MODEL_CHAIN: string[] = [
   'stepfun/step-3.5-flash:free',
   'qwen/qwen3.6-plus:free',
   'minimax/minimax-m2.5:free',
+  'arcee-ai/trinity-large-preview:free',
+  'nvidia/nemotron-3-nano-30b-a3b:free',
+  'liquid/lfm-2.5-1.2b-instruct:free',
+  'liquid/lfm-2.5-1.2b-thinking:free',
+  'openrouter/free',
 ];
 
 class SkipModelError extends Error {}
