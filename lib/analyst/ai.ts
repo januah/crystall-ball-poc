@@ -1,20 +1,21 @@
-// Analyst AI caller — primary free model with automatic fallback.
-// Both analyst API routes import callAnalystAI from here.
+// Analyst AI caller — tries a chain of free models in sequence.
+// If a model is rate-limited (429/503), unavailable (404), or requires
+// credits (402), it moves to the next model automatically.
 
 import { ANALYST_SYSTEM_PROMPT, buildUserMessage } from './prompt';
 import type { AnalystInput, AnalystReport } from './types';
 
-const PRIMARY_MODEL =
-  process.env.ANALYST_PRIMARY_MODEL ?? 'google/gemma-3-27b-it:free';
-const FALLBACK_MODEL =
-  process.env.ANALYST_FALLBACK_MODEL ?? 'qwen/qwen3.6-plus:free';
+// All free models on OpenRouter, tried in order.
+// Override the first two via env vars; the rest are hardcoded fallbacks.
+const MODEL_CHAIN: string[] = [
+  process.env.ANALYST_PRIMARY_MODEL  ?? 'google/gemma-3-27b-it:free',
+  process.env.ANALYST_FALLBACK_MODEL ?? 'nvidia/nemotron-3-super-120b-a12b:free',
+  'stepfun/step-3.5-flash:free',
+  'qwen/qwen3.6-plus:free',
+  'minimax/minimax-m2.5:free',
+];
 
-class RateLimitError extends Error {
-  constructor(msg: string) {
-    super(msg);
-    this.name = 'RateLimitError';
-  }
-}
+class SkipModelError extends Error {}
 
 async function callOpenRouter(messages: object[], model: string): Promise<string> {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -33,12 +34,12 @@ async function callOpenRouter(messages: object[], model: string): Promise<string
     }),
   });
 
-  if (res.status === 429 || res.status === 503) {
-    throw new RateLimitError(`Model ${model} returned HTTP ${res.status}`);
+  // Any of these mean "try the next model"
+  if (res.status === 429 || res.status === 503 || res.status === 404 || res.status === 402) {
+    const body = await res.text().catch(() => '');
+    throw new SkipModelError(`${model} HTTP ${res.status}: ${body.slice(0, 120)}`);
   }
-  if (res.status === 402) {
-    throw new RateLimitError(`Model ${model} requires paid credits (HTTP 402) — switching to fallback`);
-  }
+
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`OpenRouter error ${res.status}: ${body.slice(0, 300)}`);
@@ -73,17 +74,19 @@ export async function callAnalystAI(input: AnalystInput): Promise<AnalystReport>
     { role: 'user',   content: buildUserMessage(input) },
   ];
 
-  let content: string;
-  try {
-    content = await callOpenRouter(messages, PRIMARY_MODEL);
-  } catch (err) {
-    if (err instanceof RateLimitError) {
-      console.warn(`[analyst] Primary model unavailable (${err.message}), switching to fallback`);
-      content = await callOpenRouter(messages, FALLBACK_MODEL);
-    } else {
+  for (const model of MODEL_CHAIN) {
+    try {
+      console.log(`[analyst] Trying model: ${model}`);
+      const content = await callOpenRouter(messages, model);
+      return parseReport(content);
+    } catch (err) {
+      if (err instanceof SkipModelError) {
+        console.warn(`[analyst] Skipping — ${err.message}`);
+        continue;
+      }
       throw err;
     }
   }
 
-  return parseReport(content);
+  throw new Error('All free models are currently rate-limited. Please try again in a few minutes.');
 }
