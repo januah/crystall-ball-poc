@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS cron_job_logs (
   run_date              date        NOT NULL,
   started_at            timestamptz NOT NULL,
   completed_at          timestamptz,
-  status                text        NOT NULL CHECK (status IN ('success', 'partial', 'failed')),
+  status                text        NOT NULL CHECK (status IN ('success', 'partial', 'failed', 'running')),
   opportunities_found   integer     NOT NULL DEFAULT 0,
   opportunities_saved   integer     NOT NULL DEFAULT 0,
   whatsapp_alerts_sent  integer     NOT NULL DEFAULT 0,

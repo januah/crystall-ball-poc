@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const logId = await createCronLog({
       run_date: runDate,
       started_at: startedAt,
-      status: 'failed',
+      status: 'running',
       opportunities_found: 0,
       opportunities_saved: 0,
       whatsapp_alerts_sent: 0,

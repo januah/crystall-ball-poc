@@ -198,19 +198,21 @@ export default function CronLogsPage() {
                     : <><Square className="h-4 w-4" /> Stop</>
                 }
               </Button>
-              <Button
-                size="sm"
-                onClick={() => triggerMutation.mutate()}
-                disabled={triggerMutation.isPending || hasActiveRun || isPaused}
-                title={hasActiveRun ? 'A run is already in progress' : isPaused ? 'Cron is stopped' : undefined}
-              >
-                {hasActiveRun
-                  ? <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
-                  : triggerMutation.isPending
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Triggering…</>
-                    : <><Play className="h-4 w-4" /> Run Now</>
-                }
-              </Button>
+              {!isPaused && (
+                <Button
+                  size="sm"
+                  onClick={() => triggerMutation.mutate()}
+                  disabled={triggerMutation.isPending || hasActiveRun || isPaused}
+                  title={hasActiveRun ? 'A run is already in progress' : isPaused ? 'Cron is stopped' : undefined}
+                >
+                  {hasActiveRun
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Running…</>
+                    : triggerMutation.isPending
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Triggering…</>
+                      : <><Play className="h-4 w-4" /> Run Now</>
+                  }
+                </Button>
+              )}
             </div>
           </div>
         </div>
