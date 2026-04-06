@@ -6,7 +6,9 @@ import { ANALYST_SYSTEM_PROMPT, buildUserMessage } from './prompt';
 import type { AnalystInput, AnalystReport } from './types';
 
 // ─── Free model cache ────────────────────────────────────────────────
+
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MIN_CONTEXT   = 8_000;          // exclude tiny models that can't follow the schema
 
 const SEED_MODELS = [
   'google/gemma-3-27b-it:free',
@@ -16,41 +18,35 @@ const SEED_MODELS = [
   'minimax/minimax-m2.5:free',
   'arcee-ai/trinity-large-preview:free',
   'nvidia/nemotron-3-nano-30b-a3b:free',
-  'liquid/lfm-2.5-1.2b-instruct:free',
-  'liquid/lfm-2.5-1.2b-thinking:free',
   'openrouter/free',
 ];
 
 let _cache: { models: string[]; fetchedAt: number } | null = null;
 
 async function getFreeModels(): Promise<string[]> {
-  // Return cache if still fresh
-  if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) {
-    return _cache.models;
-  }
+  if (_cache && Date.now() - _cache.fetchedAt < CACHE_TTL_MS) return _cache.models;
 
   try {
     const res = await fetch('https://openrouter.ai/api/v1/models', {
       headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}` },
-      // Next.js cache: revalidate every hour server-side too
-      next: { revalidate: 3600 },
-    } as RequestInit);
-
+    });
     if (!res.ok) throw new Error(`Models API ${res.status}`);
 
-    const { data } = await res.json() as { data: { id: string; pricing?: { prompt: string; completion: string } }[] };
+    const { data } = await res.json() as {
+      data: { id: string; context_length?: number; pricing?: { prompt: string; completion: string } }[];
+    };
 
-    // A model is free if its ID ends with :free OR both prompt+completion cost 0
     const free = data
-      .filter((m) =>
-        m.id.endsWith(':free') ||
-        (m.pricing?.prompt === '0' && m.pricing?.completion === '0')
-      )
+      .filter((m) => {
+        const isFree = m.id.endsWith(':free') ||
+          (m.pricing?.prompt === '0' && m.pricing?.completion === '0');
+        const hasContext = !m.context_length || m.context_length >= MIN_CONTEXT;
+        return isFree && hasContext;
+      })
       .map((m) => m.id);
 
-    if (free.length === 0) throw new Error('No free models returned');
+    if (free.length === 0) throw new Error('No eligible free models returned');
 
-    // Env-var overrides stay at the front
     const pinned = [
       process.env.ANALYST_PRIMARY_MODEL,
       process.env.ANALYST_FALLBACK_MODEL,
@@ -60,22 +56,29 @@ async function getFreeModels(): Promise<string[]> {
     const models = [...pinned, ...rest];
 
     _cache = { models, fetchedAt: Date.now() };
-    console.log(`[analyst] Refreshed free model list (${models.length} models)`);
+    console.log(`[analyst] Refreshed free model list: ${models.join(', ')}`);
     return models;
   } catch (err) {
     console.warn(`[analyst] Could not fetch model list — using seed list. Reason: ${err}`);
-    return SEED_MODELS;
+    return [
+      ...(process.env.ANALYST_PRIMARY_MODEL  ? [process.env.ANALYST_PRIMARY_MODEL]  : []),
+      ...(process.env.ANALYST_FALLBACK_MODEL ? [process.env.ANALYST_FALLBACK_MODEL] : []),
+      ...SEED_MODELS,
+    ];
   }
 }
 
-// Expose for the refresh API endpoint
 export async function refreshFreeModels(): Promise<string[]> {
   _cache = null;
   return getFreeModels();
 }
 
 // ─── OpenRouter caller ───────────────────────────────────────────────
-class SkipModelError extends Error {}
+
+// Thrown when a model should be skipped and the next one tried
+class SkipModelError extends Error {
+  constructor(msg: string) { super(msg); this.name = 'SkipModelError'; }
+}
 
 async function callOpenRouter(messages: object[], model: string): Promise<string> {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -89,7 +92,8 @@ async function callOpenRouter(messages: object[], model: string): Promise<string
     body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 4000 }),
   });
 
-  if (res.status === 429 || res.status === 503 || res.status === 404 || res.status === 402) {
+  // These all mean "skip to next model"
+  if ([402, 404, 429, 503].includes(res.status)) {
     const body = await res.text().catch(() => '');
     throw new SkipModelError(`${model} HTTP ${res.status}: ${body.slice(0, 120)}`);
   }
@@ -102,28 +106,40 @@ async function callOpenRouter(messages: object[], model: string): Promise<string
   const json = await res.json();
   const content = json?.choices?.[0]?.message?.content;
   if (typeof content !== 'string') {
-    throw new Error(`Unexpected OpenRouter response: ${JSON.stringify(json).slice(0, 200)}`);
+    throw new SkipModelError(`${model} returned unexpected response shape`);
   }
   return content;
 }
 
 // ─── JSON parser ─────────────────────────────────────────────────────
-function parseReport(raw: string): AnalystReport {
+
+function parseReport(raw: string, model: string): AnalystReport {
   const cleaned = raw.trim()
     .replace(/^```(?:json)?\n?/i, '')
     .replace(/\n?```$/i, '')
     .trim();
-  try {
-    return JSON.parse(cleaned) as AnalystReport;
-  } catch {
-    const match = cleaned.match(/(\{[\s\S]*\})/);
-    if (match) return JSON.parse(match[1]) as AnalystReport;
-    throw new Error(`AI returned non-JSON content: ${cleaned.slice(0, 400)}`);
+
+  // Try full parse first
+  try { return JSON.parse(cleaned) as AnalystReport; } catch { /* continue */ }
+
+  // Try extracting the first JSON object
+  const match = cleaned.match(/(\{[\s\S]*\})/);
+  if (match) {
+    try { return JSON.parse(match[1]) as AnalystReport; } catch { /* continue */ }
   }
+
+  // Model produced non-JSON — skip it and let the next one try
+  throw new SkipModelError(`${model} returned non-JSON content: ${cleaned.slice(0, 200)}`);
 }
 
 // ─── Main export ─────────────────────────────────────────────────────
-export async function callAnalystAI(input: AnalystInput): Promise<AnalystReport> {
+
+export interface AnalystResult {
+  report:     AnalystReport;
+  model_used: string;
+}
+
+export async function callAnalystAI(input: AnalystInput): Promise<AnalystResult> {
   const messages = [
     { role: 'system', content: ANALYST_SYSTEM_PROMPT },
     { role: 'user',   content: buildUserMessage(input) },
@@ -133,15 +149,17 @@ export async function callAnalystAI(input: AnalystInput): Promise<AnalystReport>
 
   for (const model of models) {
     try {
-      console.log(`[analyst] Trying model: ${model}`);
+      console.log(`[analyst] Trying: ${model}`);
       const content = await callOpenRouter(messages, model);
-      return parseReport(content);
+      const report  = parseReport(content, model);
+      console.log(`[analyst] Success: ${model}`);
+      return { report, model_used: model };
     } catch (err) {
       if (err instanceof SkipModelError) {
         console.warn(`[analyst] Skipping — ${err.message}`);
         continue;
       }
-      throw err;
+      throw err; // unexpected error — propagate
     }
   }
 

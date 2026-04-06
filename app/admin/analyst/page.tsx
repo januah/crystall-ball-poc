@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import {
   TrendingUp, Target, Globe, Layers, Users, Zap,
   BarChart2, AlertTriangle, BookOpen, ArrowRight, CheckCircle2,
   ShieldAlert, Shield, ShieldCheck, DollarSign, Cpu,
+  Save, Clock, Trash2, History,
 } from 'lucide-react';
 
 // ---------- constants ----------
@@ -411,6 +412,7 @@ function AnalystReportView({ report, title }: { report: AnalystReport; title: st
 
 export default function AnalystPage() {
   const { toast, showToast, hideToast } = useToast();
+  const queryClient = useQueryClient();
 
   const [title,       setTitle]       = useState('');
   const [description, setDescription] = useState('');
@@ -418,7 +420,21 @@ export default function AnalystPage() {
   const [verticals,   setVerticals]   = useState<string[]>(['AI', 'Analytics']);
   const [customTag,   setCustomTag]   = useState('');
   const [report,      setReport]      = useState<AnalystReport | null>(null);
+  const [modelUsed,   setModelUsed]   = useState<string | null>(null);
+  const [savedId,     setSavedId]     = useState<string | null>(null);
 
+  // ── Saved reports list ──
+  const { data: savedReports = [] } = useQuery<{ id: string; title: string; model_used: string | null; created_at: string }[]>({
+    queryKey: ['analyst-saved'],
+    queryFn: async () => {
+      const res = await fetch('/api/analyst/saved');
+      if (!res.ok) return [];
+      const { data } = await res.json();
+      return data ?? [];
+    },
+  });
+
+  // ── Generate ──
   const mutation = useMutation({
     mutationFn: async () => {
       const res = await fetch('/api/analyst', {
@@ -433,14 +449,69 @@ export default function AnalystPage() {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error ?? 'Analysis failed');
-      return json.data as AnalystReport;
+      return { report: json.data as AnalystReport, model_used: json.model_used as string | null };
     },
-    onSuccess: (data) => {
-      setReport(data);
-      showToast('Analysis complete.');
+    onSuccess: ({ report, model_used }) => {
+      setReport(report);
+      setModelUsed(model_used ?? null);
+      setSavedId(null);
+      showToast(`Analysis complete${model_used ? ` · ${model_used}` : ''}.`);
     },
     onError: (err: Error) => showToast(err.message),
   });
+
+  // ── Save ──
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/analyst/saved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          input: { opportunity_title: title.trim(), opportunity_description: description.trim(), amast_verticals: verticals, sea_region: region },
+          report,
+          model_used: modelUsed,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? 'Save failed');
+      return json.data.id as string;
+    },
+    onSuccess: (id) => {
+      setSavedId(id);
+      showToast('Report saved.');
+      queryClient.invalidateQueries({ queryKey: ['analyst-saved'] });
+    },
+    onError: (err: Error) => showToast(err.message),
+  });
+
+  // ── Delete saved ──
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/analyst/saved/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Delete failed');
+    },
+    onSuccess: () => {
+      showToast('Report deleted.');
+      queryClient.invalidateQueries({ queryKey: ['analyst-saved'] });
+    },
+    onError: (err: Error) => showToast(err.message),
+  });
+
+  // ── Load saved ──
+  async function loadSaved(id: string) {
+    const res = await fetch(`/api/analyst/saved/${id}`);
+    const json = await res.json();
+    if (!json.success) { showToast('Failed to load report.'); return; }
+    const { title: t, report: r, model_used: m, input } = json.data;
+    setTitle(t);
+    setDescription(input?.opportunity_description ?? '');
+    setVerticals(input?.amast_verticals ?? ['AI']);
+    setRegion(input?.sea_region ?? 'Southeast Asia');
+    setReport(r);
+    setModelUsed(m ?? null);
+    setSavedId(id);
+  }
 
   function toggleVertical(v: string) {
     setVerticals((prev) =>
@@ -470,9 +541,29 @@ export default function AnalystPage() {
               <p className="text-xs text-muted-foreground mt-0.5">AI-powered opportunity analysis for AMAST Sdn Bhd</p>
             </div>
             {report && (
-              <Button size="sm" variant="outline" onClick={() => { setReport(null); }}>
-                New Analysis
-              </Button>
+              <div className="flex items-center gap-2">
+                {savedId ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Saved
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                  >
+                    {saveMutation.isPending
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Save className="h-3.5 w-3.5" />
+                    }
+                    Save
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" onClick={() => { setReport(null); setSavedId(null); setModelUsed(null); }}>
+                  New Analysis
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -586,6 +677,52 @@ export default function AnalystPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Saved Reports */}
+              {savedReports.length > 0 && (
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <History className="h-4 w-4 text-muted-foreground" />
+                      <h2 className="text-sm font-semibold text-foreground">Saved Reports</h2>
+                      <span className="ml-auto text-xs text-muted-foreground">{savedReports.length} saved</span>
+                    </div>
+                    <div className="space-y-2">
+                      {savedReports.map((s) => (
+                        <div key={s.id} className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 hover:bg-muted/40 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{s.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                              <span className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleDateString()}</span>
+                              {s.model_used && (
+                                <>
+                                  <span className="text-muted-foreground">·</span>
+                                  <span className="text-xs text-muted-foreground truncate">{s.model_used}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => loadSaved(s.id)}>
+                              Load
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:border-destructive/30"
+                              onClick={() => deleteMutation.mutate(s.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           ) : (
             /* ── Report View ── */

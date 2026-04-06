@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session';
 import { callAnalystAI } from '@/lib/analyst/ai';
 import type { AnalystInput } from '@/lib/analyst/types';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // POST /api/analyst
 export async function POST(req: NextRequest) {
@@ -25,9 +25,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'amast_verticals must be a non-empty array' }, { status: 400 });
     }
 
-    const report = await callAnalystAI(body);
+    const { report, model_used } = await callAnalystAI(body);
 
-    return NextResponse.json({ success: true, data: report });
+    return NextResponse.json({ success: true, data: report, model_used });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     if (message === 'Unauthenticated') {

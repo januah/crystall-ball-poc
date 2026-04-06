@@ -3,7 +3,7 @@ import { getSessionUser } from '@/lib/session';
 import { supabaseAdmin } from '@/lib/supabase/client';
 import { callAnalystAI } from '@/lib/analyst/ai';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 // GET /api/opportunities/[slug]/analyst-report
 export async function GET(
@@ -15,7 +15,7 @@ export async function GET(
 
     const { data, error } = await supabaseAdmin
       .from('opportunity_analyst_reports')
-      .select('report, created_at, created_by')
+      .select('report, created_at, created_by, model_used')
       .eq('opportunity_slug', params.slug)
       .maybeSingle();
 
@@ -45,7 +45,7 @@ export async function POST(
 
     const { title, description, verticals } = await req.json();
 
-    const report = await callAnalystAI({
+    const { report, model_used } = await callAnalystAI({
       opportunity_title:       title,
       opportunity_description: description,
       amast_verticals:         verticals ?? ['AI', 'SaaS'],
@@ -58,15 +58,16 @@ export async function POST(
         {
           opportunity_slug: params.slug,
           report,
-          created_by:       user.id,
-          created_at:       new Date().toISOString(),
+          model_used,
+          created_by:  user.id,
+          created_at:  new Date().toISOString(),
         },
         { onConflict: 'opportunity_slug' }
       );
 
     if (error) throw new Error(error.message);
 
-    return NextResponse.json({ success: true, data: report });
+    return NextResponse.json({ success: true, data: report, model_used });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     if (message === 'Unauthenticated') {
