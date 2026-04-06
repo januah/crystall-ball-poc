@@ -6,7 +6,7 @@ import type { AnalystReport, AnalystInput } from '@/lib/analyst/types';
 
 export const maxDuration = 120;
 
-const ANALYST_MODEL = process.env.ANALYST_AI_MODEL ?? 'anthropic/claude-sonnet-4-5';
+const ANALYST_MODEL = process.env.ANALYST_AI_MODEL ?? 'anthropic/claude-3-5-haiku';
 
 async function callAnalystAI(input: AnalystInput): Promise<AnalystReport> {
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -24,6 +24,7 @@ async function callAnalystAI(input: AnalystInput): Promise<AnalystReport> {
         { role: 'user',   content: buildUserMessage(input) },
       ],
       temperature: 0.2,
+      max_tokens: 4000,
     }),
   });
 
