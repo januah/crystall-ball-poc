@@ -32,3 +32,6 @@ yarn-error.log*
 
 # Claude worktrees
 .claude/worktrees/
+
+.gemini/
+gha-creds-*.json

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, ScrollText, LogOut, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Users, ScrollText, LogOut, Sparkles, BrainCircuit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { DarkModeToggle } from '@/components/ui/DarkModeToggle';
@@ -17,9 +17,10 @@ export function Sidebar() {
   const isAdmin = user?.role === 'admin';
 
   const navItems = [
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, show: true },
-    { href: '/admin/logs', label: 'Cron Logs', icon: ScrollText, show: isAdmin },
-    { href: '/admin/users', label: 'User Management', icon: Users, show: isAdmin },
+    { href: '/dashboard',      label: 'Dashboard',       icon: LayoutDashboard, show: true                              },
+    { href: '/admin/analyst',  label: 'Analyst',         icon: BrainCircuit,    show: isAdmin || user?.role === 'analyst' },
+    { href: '/admin/logs',     label: 'Cron Logs',       icon: ScrollText,      show: isAdmin                             },
+    { href: '/admin/users',    label: 'User Management', icon: Users,           show: isAdmin                             },
   ];
 
   return (
